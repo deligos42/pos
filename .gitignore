@@ -1,4 +1,25 @@
+# Environment
 .env
+.env.local
+
+# Dependencies
 /vendor
 node_modules
-.log
+
+# Logs
+logs/*
+*.log
+
+# Test/Debug files
+cli_response.json
+db_check.json
+test_sale.json
+cookies.txt
+response_raw.txt
+resp_verbose.txt
+
+# User uploads
+assets/profile_photos/*
+
+# AI/IDE helpers
+.agents/
