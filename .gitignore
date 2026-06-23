@@ -22,4 +22,4 @@ resp_verbose.txt
 assets/profile_photos/*
 
 # AI/IDE helpers
-.agents/
+.agents/.env
