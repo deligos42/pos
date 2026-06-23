@@ -1,0 +1,319 @@
+<?php
+require_once 'includes/auth.php';
+require_once 'config/db.php';
+
+$message = '';
+$error = '';
+$user_id = (int)($_SESSION['user_id'] ?? 0);
+
+try {
+    $pdo->query("SELECT profile_photo FROM users LIMIT 1");
+} catch (PDOException $e) {
+    $pdo->exec("ALTER TABLE users ADD COLUMN profile_photo varchar(255) DEFAULT NULL AFTER role");
+}
+
+$required_user_columns = [
+    'phone' => "ALTER TABLE users ADD COLUMN phone varchar(30) DEFAULT NULL AFTER full_name",
+    'id_number' => "ALTER TABLE users ADD COLUMN id_number varchar(50) DEFAULT NULL AFTER phone",
+    'email' => "ALTER TABLE users ADD COLUMN email varchar(100) DEFAULT NULL AFTER id_number",
+];
+
+foreach ($required_user_columns as $column => $sql) {
+    try {
+        $pdo->query("SELECT `$column` FROM users LIMIT 1");
+    } catch (PDOException $e) {
+        $pdo->exec($sql);
+    }
+}
+
+$stmt = $pdo->prepare("SELECT id, username, password, full_name, phone, id_number, email, role, profile_photo, created_at FROM users WHERE id = ?");
+$stmt->execute([$user_id]);
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$user) {
+    session_destroy();
+    header('Location: index.php');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $action = $_POST['action'] ?? '';
+
+    if ($action === 'update_profile') {
+        $username = trim($_POST['username'] ?? '');
+        $full_name = trim($_POST['full_name'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $id_number = trim($_POST['id_number'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+
+        if ($username === '' || $full_name === '' || $phone === '' || $id_number === '' || $email === '') {
+            $error = 'Full name, username, phone number, ID number, and email are required.';
+        } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $error = 'Enter a valid email address.';
+        } else {
+            $stmt = $pdo->prepare("SELECT username, email, id_number FROM users WHERE (username = ? OR email = ? OR id_number = ?) AND id <> ? LIMIT 1");
+            $stmt->execute([$username, $email, $id_number, $user_id]);
+            $existing_user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing_user && $existing_user['username'] === $username) {
+                $error = 'That username is already in use.';
+            } elseif ($existing_user && $existing_user['email'] === $email) {
+                $error = 'That email is already in use.';
+            } elseif ($existing_user && $existing_user['id_number'] === $id_number) {
+                $error = 'That ID number is already in use.';
+            } else {
+                $stmt = $pdo->prepare("UPDATE users SET username = ?, full_name = ?, phone = ?, id_number = ?, email = ? WHERE id = ?");
+                $stmt->execute([$username, $full_name, $phone, $id_number, $email, $user_id]);
+
+                $_SESSION['username'] = $username;
+                $_SESSION['full_name'] = $full_name;
+                $message = 'Profile updated successfully.';
+            }
+        }
+    }
+
+    if ($action === 'change_password') {
+        $current_password = $_POST['current_password'] ?? '';
+        $new_password = $_POST['new_password'] ?? '';
+        $confirm_password = $_POST['confirm_password'] ?? '';
+
+        if ($current_password === '' || $new_password === '' || $confirm_password === '') {
+            $error = 'All password fields are required.';
+        } elseif (!password_verify($current_password, $user['password'])) {
+            $error = 'Current password is incorrect.';
+        } elseif (strlen($new_password) < 6) {
+            $error = 'New password must be at least 6 characters.';
+        } elseif ($new_password !== $confirm_password) {
+            $error = 'New password and confirmation do not match.';
+        } else {
+            $hash = password_hash($new_password, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare("UPDATE users SET password = ? WHERE id = ?");
+            $stmt->execute([$hash, $user_id]);
+            $message = 'Password changed successfully.';
+        }
+    }
+
+    if ($action === 'upload_photo') {
+        $photo = $_FILES['profile_photo'] ?? null;
+        $allowed_types = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+            'image/gif' => 'gif',
+        ];
+
+        if (!$photo || ($photo['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            $error = 'Choose a profile photo to upload.';
+        } elseif (($photo['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+            $error = 'Photo upload failed. Please try again.';
+        } elseif (($photo['size'] ?? 0) > 2 * 1024 * 1024) {
+            $error = 'Profile photo must be 2 MB or smaller.';
+        } else {
+            $image_info = getimagesize($photo['tmp_name']);
+            $mime = $image_info['mime'] ?? '';
+
+            if (!isset($allowed_types[$mime])) {
+                $error = 'Profile photo must be a JPG, PNG, WEBP, or GIF image.';
+            } else {
+                $upload_dir = __DIR__ . '/assets/profile_photos';
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0755, true);
+                }
+
+                $filename = 'user_' . $user_id . '_' . bin2hex(random_bytes(8)) . '.' . $allowed_types[$mime];
+                $relative_path = 'assets/profile_photos/' . $filename;
+                $target_path = $upload_dir . '/' . $filename;
+
+                if (move_uploaded_file($photo['tmp_name'], $target_path)) {
+                    if (!empty($user['profile_photo'])) {
+                        $old_path = __DIR__ . '/' . $user['profile_photo'];
+                        $old_dir = realpath(dirname($old_path));
+                        $profile_dir = realpath($upload_dir);
+                        if ($old_dir === $profile_dir && is_file($old_path)) {
+                            unlink($old_path);
+                        }
+                    }
+
+                    $stmt = $pdo->prepare("UPDATE users SET profile_photo = ? WHERE id = ?");
+                    $stmt->execute([$relative_path, $user_id]);
+                    $_SESSION['profile_photo'] = $relative_path;
+                    $message = 'Profile photo updated successfully.';
+                } else {
+                    $error = 'Could not save the uploaded photo.';
+                }
+            }
+        }
+    }
+
+    if ($action === 'remove_photo') {
+        if (!empty($user['profile_photo'])) {
+            $photo_path = __DIR__ . '/' . $user['profile_photo'];
+            $profile_dir = realpath(__DIR__ . '/assets/profile_photos');
+            $photo_dir = realpath(dirname($photo_path));
+            if ($photo_dir === $profile_dir && is_file($photo_path)) {
+                unlink($photo_path);
+            }
+        }
+
+        $stmt = $pdo->prepare("UPDATE users SET profile_photo = NULL WHERE id = ?");
+        $stmt->execute([$user_id]);
+        unset($_SESSION['profile_photo']);
+        $message = 'Profile photo removed successfully.';
+    }
+
+    $stmt = $pdo->prepare("SELECT id, username, password, full_name, phone, id_number, email, role, profile_photo, created_at FROM users WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
+}
+
+$_SESSION['profile_photo'] = $user['profile_photo'] ?? null;
+
+include 'includes/header.php';
+?>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Profile Settings</h2>
+    <span class="badge text-bg-secondary"><?= htmlspecialchars(ucfirst($user['role'])) ?></span>
+</div>
+
+<?php if ($message): ?>
+    <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
+<?php endif; ?>
+<?php if ($error): ?>
+    <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+<?php endif; ?>
+
+<div class="row g-4">
+    <div class="col-lg-5">
+        <div class="card mb-4">
+            <div class="card-header">Profile Photo</div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3 mb-3">
+                    <?php if (!empty($user['profile_photo'])): ?>
+                        <img src="<?= htmlspecialchars($user['profile_photo']) ?>" class="rounded-circle object-fit-cover border" width="96" height="96" alt="Profile photo">
+                    <?php else: ?>
+                        <div class="rounded-circle bg-secondary-subtle text-secondary d-flex align-items-center justify-content-center border" style="width: 96px; height: 96px;">
+                            <i class="bi bi-person-fill fs-1"></i>
+                        </div>
+                    <?php endif; ?>
+                    <div>
+                        <div class="fw-semibold"><?= htmlspecialchars($user['full_name']) ?></div>
+                        <div class="text-muted small"><?= htmlspecialchars($user['username']) ?></div>
+                    </div>
+                </div>
+                <form method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="action" value="upload_photo">
+                    <div class="mb-3">
+                        <input type="file" name="profile_photo" class="form-control" accept="image/jpeg,image/png,image/webp,image/gif" required>
+                        <div class="form-text">JPG, PNG, WEBP, or GIF. Max 2 MB.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-upload"></i> Upload Photo
+                    </button>
+                </form>
+                <?php if (!empty($user['profile_photo'])): ?>
+                    <form method="POST" class="mt-2">
+                        <input type="hidden" name="action" value="remove_photo">
+                        <button type="submit" class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-trash"></i> Remove Photo
+                        </button>
+                    </form>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">Account Details</div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="action" value="update_profile">
+                    <div class="mb-3">
+                        <label class="form-label" for="full_name">Full Name</label>
+                        <input type="text" name="full_name" id="full_name" class="form-control" value="<?= htmlspecialchars($user['full_name']) ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="username">Username</label>
+                        <input type="text" name="username" id="username" class="form-control" value="<?= htmlspecialchars($user['username']) ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="phone">Phone Number</label>
+                        <input type="tel" name="phone" id="phone" class="form-control" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="id_number">ID Number</label>
+                        <input type="text" name="id_number" id="id_number" class="form-control" value="<?= htmlspecialchars($user['id_number'] ?? '') ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="email">Email</label>
+                        <input type="email" name="email" id="email" class="form-control" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-control" value="<?= htmlspecialchars(ucfirst($user['role'])) ?>" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Member Since</label>
+                        <input type="text" class="form-control" value="<?= htmlspecialchars(date('d M Y', strtotime($user['created_at']))) ?>" disabled>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-save"></i> Save Changes
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">Change Password</div>
+            <div class="card-body">
+                <form method="POST">
+                    <input type="hidden" name="action" value="change_password">
+                    <div class="mb-3">
+                        <label class="form-label" for="current_password">Current Password</label>
+                        <div class="input-group">
+                            <input type="password" name="current_password" id="current_password" class="form-control" required>
+                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="current_password" aria-label="Show password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="new_password">New Password</label>
+                        <div class="input-group">
+                            <input type="password" name="new_password" id="new_password" class="form-control" minlength="6" required>
+                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="new_password" aria-label="Show password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="confirm_password">Confirm New Password</label>
+                        <div class="input-group">
+                            <input type="password" name="confirm_password" id="confirm_password" class="form-control" minlength="6" required>
+                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="confirm_password" aria-label="Show password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="bi bi-shield-lock"></i> Update Password
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelectorAll('.toggle-password').forEach(button => {
+    button.addEventListener('click', () => {
+        const input = document.getElementById(button.dataset.target);
+        const icon = button.querySelector('i');
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        icon.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+        button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+});
+</script>
+<?php include 'includes/footer.php'; ?>

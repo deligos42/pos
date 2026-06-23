@@ -1,0 +1,1 @@
+ALTER TABLE products ADD CONSTRAINT chk_stock_nonnegative CHECK (stock_qty >= 0);
