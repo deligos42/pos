@@ -14,10 +14,21 @@ if (file_exists($envFile)) {
     }
 }
 
-$host = getenv('DB_HOST') ?: 'localhost';
-$dbname = getenv('DB_NAME') ?: 'pos_system';
-$username = getenv('DB_USER') ?: 'root';
-$password = getenv('DB_PASS') ?: '';
+// Railway / generic production environment support
+$databaseUrl = getenv('DATABASE_URL') ?: getenv('MYSQL_URL') ?: getenv('RAILWAY_DATABASE_URL');
+if ($databaseUrl) {
+    $dbopts = parse_url($databaseUrl);
+    $host     = $dbopts['host'] ?? 'localhost';
+    $dbname   = ltrim($dbopts['path'] ?? '', '/');
+    $username = $dbopts['user'] ?? 'root';
+    $password = $dbopts['pass'] ?? '';
+} else {
+    // Local XAMPP / manual environment variable fallbacks
+    $host     = getenv('DB_HOST') ?: getenv('MYSQL_HOST') ?: 'localhost';
+    $dbname   = getenv('DB_NAME') ?: getenv('MYSQL_DATABASE') ?: 'pos_system';
+    $username = getenv('DB_USER') ?: getenv('MYSQL_USER') ?: 'root';
+    $password = getenv('DB_PASS') ?: getenv('MYSQL_PASSWORD') ?: '';
+}
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);

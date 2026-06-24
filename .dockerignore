@@ -1,0 +1,12 @@
+.git
+.gitignore
+.env
+logs
+assets/profile_photos
+cli_response.json
+db_check.json
+response_raw.txt
+resp_verbose.txt
+test_sale.json
+vendor
+node_modules
