@@ -19,19 +19,21 @@ $databaseUrl = getenv('DATABASE_URL') ?: getenv('MYSQL_URL') ?: getenv('RAILWAY_
 if ($databaseUrl) {
     $dbopts = parse_url($databaseUrl);
     $host     = $dbopts['host'] ?? 'localhost';
-    $dbname   = ltrim($dbopts['path'] ?? '', '/');
-    $username = $dbopts['user'] ?? 'root';
-    $password = $dbopts['pass'] ?? '';
+    $dbname   = rawurldecode(ltrim($dbopts['path'] ?? '', '/'));
+    $username = rawurldecode($dbopts['user'] ?? 'root');
+    $password = rawurldecode($dbopts['pass'] ?? '');
+    $port     = $dbopts['port'] ?? 3306;
 } else {
     // Local XAMPP / manual environment variable fallbacks
-    $host     = getenv('DB_HOST') ?: getenv('MYSQL_HOST') ?: 'localhost';
-    $dbname   = getenv('DB_NAME') ?: getenv('MYSQL_DATABASE') ?: 'pos_system';
-    $username = getenv('DB_USER') ?: getenv('MYSQL_USER') ?: 'root';
-    $password = getenv('DB_PASS') ?: getenv('MYSQL_PASSWORD') ?: '';
+    $host     = getenv('DB_HOST') ?: getenv('MYSQL_HOST') ?: getenv('MYSQLHOST') ?: 'localhost';
+    $dbname   = getenv('DB_NAME') ?: getenv('DB_DATABASE') ?: getenv('MYSQL_DATABASE') ?: getenv('MYSQLDATABASE') ?: 'pos_system';
+    $username = getenv('DB_USER') ?: getenv('DB_USERNAME') ?: getenv('MYSQL_USER') ?: getenv('MYSQLUSER') ?: 'root';
+    $password = getenv('DB_PASS') ?: getenv('DB_PASSWORD') ?: getenv('MYSQL_PASSWORD') ?: getenv('MYSQLPASSWORD') ?: '';
+    $port     = getenv('DB_PORT') ?: getenv('MYSQL_PORT') ?: getenv('MYSQLPORT') ?: 3306;
 }
 
 try {
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4", $username, $password);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch(PDOException $e) {
     die("Database connection failed: " . $e->getMessage());

@@ -9,7 +9,7 @@ include 'includes/header.php';
 ?>
 <h2>Point of Sale</h2>
 <div class="row">
-    <div class="col-md-7">
+    <div class="col-lg-7">
         <div class="card mb-3">
             <div class="card-body">
                 <div class="input-group">
@@ -38,7 +38,7 @@ include 'includes/header.php';
                         <tr>
                             <td colspan="3" class="text-end"><strong>Discount</strong></td>
                             <td>
-                                <input type="number" id="discountInput" class="form-control form-control-sm" value="0" step="0.01" style="width:140px;">
+                                <input type="number" id="discountInput" class="form-control form-control-sm discount-input" value="0" step="0.01">
                             </td>
                             <td></td>
                         </tr>
@@ -66,7 +66,7 @@ include 'includes/header.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
-                    <div class="col-md-6 text-end">
+                    <div class="col-md-6 text-md-end d-flex flex-wrap justify-content-md-end gap-2">
                         <button class="btn btn-success" id="completeSaleBtn" type="button"><i class="bi bi-check-circle"></i> Complete Sale</button>
                         <button class="btn btn-danger" id="clearCartBtn" type="button"><i class="bi bi-trash"></i> Clear</button>
                     </div>
@@ -75,7 +75,7 @@ include 'includes/header.php';
         </div>
     </div>
 
-    <div class="col-md-5">
+    <div class="col-lg-5">
         <div class="card">
             <div class="card-header">Receipt Preview</div>
             <div class="card-body receipt" id="receiptPreview" style="background:#fff; color:#000; min-height:300px;">
@@ -110,6 +110,14 @@ include 'includes/header.php';
 let cart = [];
 let invoiceNo = document.getElementById('invoiceDisplay').textContent;
 let lastReceiptData = null;
+
+function notify(message, type = 'info') {
+    if (typeof window.showToast === 'function') {
+        window.showToast(message, type);
+    } else {
+        alert(message);
+    }
+}
 
 function generateInvoiceNo() {
     let now = new Date();
@@ -321,7 +329,7 @@ async function makeReceiptPdf(data) {
 
 async function printReceiptOnly() {
     if (!receiptHasItems()) {
-        alert('Receipt is empty.');
+        notify('Receipt is empty.', 'warning');
         return;
     }
 
@@ -354,7 +362,7 @@ async function printReceiptOnly() {
 
 async function downloadReceiptPdf() {
     if (!receiptHasItems()) {
-        alert('Receipt is empty.');
+        notify('Receipt is empty.', 'warning');
         return;
     }
 
@@ -460,10 +468,10 @@ $(document).on('click', '.add-to-cart', function() {
     let existing = cart.find(item => item.id === id);
     if (existing) {
         if (existing.qty < stock) existing.qty++;
-        else alert('Not enough stock!');
+        else notify('Not enough stock!', 'warning');
     } else {
         if (stock > 0) cart.push({ id, name, price, qty: 1 });
-        else alert('Out of stock!');
+        else notify('Out of stock!', 'warning');
     }
     renderCart();
 });
@@ -502,7 +510,7 @@ $('#downloadReceiptBtn').on('click', downloadReceiptPdf);
 
 // Complete Sale
 $('#completeSaleBtn').on('click', function() {
-    if (cart.length === 0) { alert('Cart is empty!'); return; }
+    if (cart.length === 0) { notify('Cart is empty!', 'warning'); return; }
 
     let customer_id = $('#customerSelect').val() || null;
     let discount = parseFloat($('#discountInput').val()) || 0;
@@ -524,7 +532,7 @@ $('#completeSaleBtn').on('click', function() {
         dataType: 'json',
         success: function(res) {
             if (res.success) {
-                alert('Sale completed! Invoice: ' + res.invoice_no);
+                notify('Sale completed! Invoice: ' + res.invoice_no, 'success');
                 lastReceiptData = getReceiptData();
                 cart = [];
                 invoiceNo = generateInvoiceNo();
@@ -536,10 +544,10 @@ $('#completeSaleBtn').on('click', function() {
                 updateTotals();
                 renderReceiptData(lastReceiptData);
             } else {
-                alert('Error: ' + (res.message || 'Unknown error'));
+                notify('Error: ' + (res.message || 'Unknown error'), 'error');
             }
         },
-        error: function(){ alert('Server error.'); }
+        error: function(){ notify('Server error.', 'error'); }
     });
 });
 
