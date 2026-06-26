@@ -7,12 +7,13 @@ if (isset($_SESSION['user_id'])) {
 require_once 'config/db.php';
 
 $error = '';
+$login = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = $_POST['username'] ?? '';
+    $login = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ?");
-    $stmt->execute([$username]);
+    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1");
+    $stmt->execute([$login, $login]);
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
@@ -71,17 +72,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
             <form method="POST">
                 <div class="mb-3">
-                    <label>Username</label>
-                    <input type="text" name="username" class="form-control" required autofocus>
+                    <label>Username or Email</label>
+                    <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($login) ?>" required autofocus>
+                    <div class="form-text text-muted small">You can log in with your username or email address.</div>
                 </div>
                 <div class="mb-3">
                     <label>Password</label>
                     <div class="input-group">
-                        <input type="password" name="password" id="loginPassword" class="form-control" required>
+                        <input type="password" name="password" id="loginPassword" class="form-control password-input" data-hint-id="loginPasswordHint" required>
                         <button class="btn btn-outline-secondary toggle-password" type="button" data-target="loginPassword" aria-label="Show password">
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
+                    <div class="form-text text-muted mt-1 password-hint" id="loginPasswordHint" style="display:none;">Password must be 8+ characters, include uppercase, lowercase, a number, and a special symbol.</div>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Login</button>
             </form>
@@ -140,6 +143,24 @@ document.querySelectorAll('.alert').forEach(alertBox => {
         : alertBox.classList.contains('alert-warning') ? 'warning'
         : 'info';
     window.showToast(message, type);
+});
+
+document.querySelectorAll('.password-input').forEach(input => {
+    const hint = document.getElementById(input.dataset.hintId);
+    if (!hint) {
+        return;
+    }
+
+    const showHint = () => {
+        hint.style.display = 'block';
+    };
+    const hideHint = () => {
+        hint.style.display = 'none';
+    };
+
+    input.addEventListener('focus', showHint);
+    input.addEventListener('click', showHint);
+    input.addEventListener('blur', hideHint);
 });
 
 document.querySelectorAll('.toggle-password').forEach(button => {

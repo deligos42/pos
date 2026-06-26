@@ -22,18 +22,24 @@
             width: 100%;
             max-width: 100%;
             min-width: 0;
-            padding-inline: clamp(27px, 10vw, 130px);
-            padding-block: clamp(25px, 5vw, 59px);
+            padding-inline: clamp(24px, 6vw, 96px);
+            padding-block: clamp(24px, 4vw, 48px);
         }
-        .table-responsive { margin-top: 20px; }
+        .table-responsive { margin-top: 1.5rem; }
         .container-fluid, .row, .row > * { min-width: 0; }
         .card { max-width: 100%; min-width: 0; }
-        .card-body { overflow-x: auto; }
+        .card-body {
+            overflow-x: auto;
+            padding: 1rem;
+        }
+        .card-header {
+            padding: 0.9rem 1rem;
+        }
         .table { min-width: max-content; margin-bottom: 0; }
         .table th, .table td { vertical-align: middle; white-space: nowrap; }
         .btn { white-space: nowrap; }
         .row { --bs-gutter-y: 1rem; }
-        .pos-cart { background: #f8f9fa; padding: 15px; border-radius: 8px; }
+        .pos-cart { background: #f8f9fa; padding: 1.25rem; border-radius: 8px; }
         .receipt { font-family: monospace; }
         .receipt-logo { width: 72px; max-width: 40%; height: auto; object-fit: contain; margin-bottom: 6px; }
         .discount-input { width: min(140px, 100%); }

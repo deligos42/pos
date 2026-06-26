@@ -81,8 +81,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'All password fields are required.';
         } elseif (!password_verify($current_password, $user['password'])) {
             $error = 'Current password is incorrect.';
-        } elseif (strlen($new_password) < 6) {
-            $error = 'New password must be at least 6 characters.';
+        } elseif (strlen($new_password) < 8) {
+            $error = 'New password must be at least 8 characters.';
+        } elseif (!preg_match('/[A-Z]/', $new_password)) {
+            $error = 'New password must include at least one uppercase letter.';
+        } elseif (!preg_match('/[a-z]/', $new_password)) {
+            $error = 'New password must include at least one lowercase letter.';
+        } elseif (!preg_match('/\d/', $new_password)) {
+            $error = 'New password must include at least one number.';
+        } elseif (!preg_match('/[^a-zA-Z\d]/', $new_password)) {
+            $error = 'New password must include at least one special character.';
         } elseif ($new_password !== $confirm_password) {
             $error = 'New password and confirmation do not match.';
         } else {
@@ -271,29 +279,43 @@ include 'includes/header.php';
                     <div class="mb-3">
                         <label class="form-label" for="current_password">Current Password</label>
                         <div class="input-group">
-                            <input type="password" name="current_password" id="current_password" class="form-control" required>
+                            <input type="password" name="current_password" id="current_password" class="form-control password-input" data-hint-id="currentPasswordHint" required>
                             <button class="btn btn-outline-secondary toggle-password" type="button" data-target="current_password" aria-label="Show password">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
+                        <div class="form-text text-muted mt-1 password-hint" id="currentPasswordHint" style="display:none;">Enter your current password.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="new_password">New Password</label>
                         <div class="input-group">
-                            <input type="password" name="new_password" id="new_password" class="form-control" minlength="6" required>
+                            <input type="password" name="new_password" id="new_password" class="form-control password-input" data-hint-id="newPasswordHint" minlength="8" required>
                             <button class="btn btn-outline-secondary toggle-password" type="button" data-target="new_password" aria-label="Show password">
                                 <i class="bi bi-eye"></i>
                             </button>
+                        </div>
+                        <div class="form-text text-muted mt-1 password-hint" id="newPasswordHint" style="display:none;">Use at least 8 characters, including uppercase, lowercase, a number, and a special character.</div>
+                        <div class="form-text text-muted mt-1" id="newPasswordRules" style="display:none;">
+                            <div class="small">Password requirements:</div>
+                            <ul class="small mb-0">
+                                <li id="ruleLength">At least 8 characters</li>
+                                <li id="ruleUpper">Uppercase letter</li>
+                                <li id="ruleLower">Lowercase letter</li>
+                                <li id="ruleNumber">Number</li>
+                                <li id="ruleSpecial">Special character</li>
+                            </ul>
                         </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="confirm_password">Confirm New Password</label>
                         <div class="input-group">
-                            <input type="password" name="confirm_password" id="confirm_password" class="form-control" minlength="6" required>
+                            <input type="password" name="confirm_password" id="confirm_password" class="form-control password-input" data-hint-id="confirmNewPasswordHint" minlength="8" required>
                             <button class="btn btn-outline-secondary toggle-password" type="button" data-target="confirm_password" aria-label="Show password">
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
+                        <div class="form-text text-muted mt-1 password-hint" id="confirmNewPasswordHint" style="display:none;">Re-enter your new password to confirm it.</div>
+                        <div class="form-text mt-1" id="confirmPasswordMatch" style="display:none;"></div>
                     </div>
                     <button type="submit" class="btn btn-warning">
                         <i class="bi bi-shield-lock"></i> Update Password
@@ -305,6 +327,74 @@ include 'includes/header.php';
 </div>
 
 <script>
+document.querySelectorAll('.password-input').forEach(input => {
+    const hint = document.getElementById(input.dataset.hintId);
+    if (!hint) {
+        return;
+    }
+
+    const showHint = () => {
+        hint.style.display = 'block';
+    };
+    const hideHint = () => {
+        hint.style.display = 'none';
+    };
+
+    input.addEventListener('focus', showHint);
+    input.addEventListener('click', showHint);
+    input.addEventListener('blur', hideHint);
+});
+
+const newPassword = document.getElementById('new_password');
+const confirmPassword = document.getElementById('confirm_password');
+const confirmPasswordMatch = document.getElementById('confirmPasswordMatch');
+const ruleLength = document.getElementById('ruleLength');
+const ruleUpper = document.getElementById('ruleUpper');
+const ruleLower = document.getElementById('ruleLower');
+const ruleNumber = document.getElementById('ruleNumber');
+const ruleSpecial = document.getElementById('ruleSpecial');
+const newPasswordRules = document.getElementById('newPasswordRules');
+
+const updatePasswordRules = () => {
+    const value = newPassword.value;
+    ruleLength.classList.toggle('text-success', value.length >= 8);
+    ruleUpper.classList.toggle('text-success', /[A-Z]/.test(value));
+    ruleLower.classList.toggle('text-success', /[a-z]/.test(value));
+    ruleNumber.classList.toggle('text-success', /\d/.test(value));
+    ruleSpecial.classList.toggle('text-success', /[^a-zA-Z\d]/.test(value));
+};
+
+const updatePasswordMatch = () => {
+    if (!confirmPassword.value) {
+        confirmPasswordMatch.style.display = 'none';
+        return;
+    }
+
+    confirmPasswordMatch.style.display = 'block';
+    if (newPassword.value === confirmPassword.value) {
+        confirmPasswordMatch.textContent = 'Passwords match.';
+        confirmPasswordMatch.className = 'form-text text-success mt-1';
+    } else {
+        confirmPasswordMatch.textContent = 'Passwords do not match.';
+        confirmPasswordMatch.className = 'form-text text-danger mt-1';
+    }
+};
+
+if (newPassword && confirmPassword) {
+    newPassword.addEventListener('focus', () => {
+        newPasswordRules.style.display = 'block';
+    });
+    newPassword.addEventListener('input', () => {
+        updatePasswordRules();
+        updatePasswordMatch();
+    });
+    newPassword.addEventListener('blur', () => {
+        newPasswordRules.style.display = 'none';
+    });
+
+    confirmPassword.addEventListener('input', updatePasswordMatch);
+}
+
 document.querySelectorAll('.toggle-password').forEach(button => {
     button.addEventListener('click', () => {
         const input = document.getElementById(button.dataset.target);

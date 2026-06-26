@@ -41,8 +41,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'All fields are required.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Enter a valid email address.';
-    } elseif (strlen($password) < 6) {
-        $error = 'Password must be at least 6 characters.';
+    } elseif (strlen($password) < 8) {
+        $error = 'Password must be at least 8 characters.';
+    } elseif (!preg_match('/[A-Z]/', $password)) {
+        $error = 'Password must include at least one uppercase letter.';
+    } elseif (!preg_match('/[a-z]/', $password)) {
+        $error = 'Password must include at least one lowercase letter.';
+    } elseif (!preg_match('/\d/', $password)) {
+        $error = 'Password must include at least one number.';
+    } elseif (!preg_match('/[^a-zA-Z\d]/', $password)) {
+        $error = 'Password must include at least one special character.';
     } elseif ($password !== $confirm_password) {
         $error = 'Password and confirmation do not match.';
     } else {
@@ -139,20 +147,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="mb-3">
                     <label>Password <span class="required-mark">*</span></label>
                     <div class="input-group">
-                        <input type="password" name="password" id="registerPassword" class="form-control" minlength="6" required>
+                        <input type="password" name="password" id="registerPassword" class="form-control password-input" data-hint-id="registerPasswordHint" minlength="6" required>
                         <button class="btn btn-outline-secondary toggle-password" type="button" data-target="registerPassword" aria-label="Show password">
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
+                    <div class="form-text text-muted mt-1 password-hint" id="registerPasswordHint" style="display:none;">Use at least 8 characters, with uppercase, lowercase, a number, and a special character.</div>
                 </div>
                 <div class="mb-3">
                     <label>Confirm Password <span class="required-mark">*</span></label>
                     <div class="input-group">
-                        <input type="password" name="confirm_password" id="confirmPassword" class="form-control" minlength="6" required>
+                        <input type="password" name="confirm_password" id="confirmPassword" class="form-control password-input" data-hint-id="confirmPasswordHint" minlength="8" required>
                         <button class="btn btn-outline-secondary toggle-password" type="button" data-target="confirmPassword" aria-label="Show password">
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
+                    <div class="form-text text-muted mt-1 password-hint" id="confirmPasswordHint" style="display:none;">Re-enter the same password to confirm it.</div>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Register</button>
             </form>
@@ -210,6 +220,24 @@ document.querySelectorAll('.alert').forEach(alertBox => {
         : alertBox.classList.contains('alert-warning') ? 'warning'
         : 'info';
     window.showToast(message, type);
+});
+
+document.querySelectorAll('.password-input').forEach(input => {
+    const hint = document.getElementById(input.dataset.hintId);
+    if (!hint) {
+        return;
+    }
+
+    const showHint = () => {
+        hint.style.display = 'block';
+    };
+    const hideHint = () => {
+        hint.style.display = 'none';
+    };
+
+    input.addEventListener('focus', showHint);
+    input.addEventListener('click', showHint);
+    input.addEventListener('blur', hideHint);
 });
 
 document.querySelectorAll('.toggle-password').forEach(button => {
