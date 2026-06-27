@@ -44,5 +44,4 @@ function updateStock($pdo, $product_id, $qty_change, $user_id, $type, $note = ''
         throw $e;
     }
 }
-?>
 
