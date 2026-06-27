@@ -1,10 +1,9 @@
 <?php
 require_once 'includes/auth.php';
 require_once 'config/db.php';
-$pageTitle = 'Customers';
+
 $message = '';
 $error = '';
-include 'includes/header.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_customer'])) {
     $fname = trim($_POST['first_name']);
@@ -40,6 +39,9 @@ if (isset($_GET['delete'])) {
     header('Location: customers.php');
     exit;
 }
+
+$pageTitle = 'Customers';
+include 'includes/header.php';
 ?>
 <h2>Customers</h2>
 <div class="row">
