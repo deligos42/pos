@@ -269,6 +269,7 @@ if (ob_get_length()) {
     ob_end_clean();
 }
 
+$pageTitle = 'Reports';
 include 'includes/header.php';
 $download_query = http_build_query([
     'start' => $start,

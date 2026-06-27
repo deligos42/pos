@@ -2,6 +2,7 @@
 $required_role = 'admin';
 require_once 'includes/auth.php';
 require_once 'config/db.php';
+$pageTitle = 'Users';
 
 $message = '';
 $error = '';
@@ -54,9 +55,15 @@ include 'includes/header.php';
         <div class="card">
             <div class="card-header">Add User</div>
             <div class="card-body">
-                <form method="POST">
-                    <div class="mb-2"><input name="username" class="form-control" placeholder="Username" required></div>
-                    <div class="mb-2"><input name="full_name" class="form-control" placeholder="Full Name" required></div>
+                <form method="POST" class="needs-validation" novalidate>
+                    <div class="mb-2">
+                        <input name="username" class="form-control" placeholder="Username" required>
+                        <div class="invalid-feedback">Username is required.</div>
+                    </div>
+                    <div class="mb-2">
+                        <input name="full_name" class="form-control" placeholder="Full Name" required>
+                        <div class="invalid-feedback">Full name is required.</div>
+                    </div>
                     <div class="mb-2">
                         <div class="input-group">
                             <input name="password" id="newUserPassword" type="password" class="form-control" placeholder="Password" required>
@@ -64,6 +71,7 @@ include 'includes/header.php';
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
+                        <div class="invalid-feedback">Password is required.</div>
                     </div>
                     <div class="mb-2">
                         <select name="role" class="form-select">

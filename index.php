@@ -70,11 +70,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php if ($error): ?>
                 <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
-            <form method="POST">
+            <form method="POST" class="needs-validation" novalidate>
                 <div class="mb-3">
                     <label>Username or Email</label>
-                    <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($login) ?>" required autofocus>
-                    <div class="form-text text-muted small">You can log in with your username or email address.</div>
+                    <input type="text" name="username" class="form-control" placeholder="Username or Email" value="<?= htmlspecialchars($login) ?>" required autofocus>
+                    <div class="invalid-feedback">Username or email is required.</div>
                 </div>
                 <div class="mb-3">
                     <label>Password</label>
@@ -84,6 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
+                    <div class="invalid-feedback">Password is required.</div>
                     <div class="form-text text-muted mt-1 password-hint" id="loginPasswordHint" style="display:none;">Password must be 8+ characters, include uppercase, lowercase, a number, and a special symbol.</div>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Login</button>
@@ -92,7 +93,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <span class="text-muted small">Don't have an account?</span>
                 <a href="register.php" class="small">Register</a>
             </div>
-            <div class="mt-3 text-muted small">Default: admin / admin123</div>
         </div>
     </div>
 </div>
@@ -176,4 +176,3 @@ document.querySelectorAll('.toggle-password').forEach(button => {
 </script>
 </body>
 </html>
-

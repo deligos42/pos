@@ -123,35 +123,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php if ($error): ?>
                 <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
-            <form method="POST">
+            <form method="POST" class="needs-validation" novalidate>
                 <div class="mb-3">
                     <label>Full Name <span class="required-mark">*</span></label>
                     <input type="text" name="full_name" class="form-control" value="<?= htmlspecialchars($full_name) ?>" required autofocus>
+                    <div class="invalid-feedback">Full name is required.</div>
                 </div>
                 <div class="mb-3">
                     <label>Username <span class="required-mark">*</span></label>
                     <input type="text" name="username" class="form-control" value="<?= htmlspecialchars($username) ?>" required>
+                    <div class="invalid-feedback">Username is required.</div>
                 </div>
                 <div class="mb-3">
                     <label>Phone Number <span class="required-mark">*</span></label>
                     <input type="tel" name="phone" class="form-control" value="<?= htmlspecialchars($phone) ?>" required>
+                    <div class="invalid-feedback">Phone number is required.</div>
                 </div>
                 <div class="mb-3">
                     <label>ID Number <span class="required-mark">*</span></label>
                     <input type="text" name="id_number" class="form-control" value="<?= htmlspecialchars($id_number) ?>" required>
+                    <div class="invalid-feedback">ID number is required.</div>
                 </div>
                 <div class="mb-3">
                     <label>Email <span class="required-mark">*</span></label>
                     <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($email) ?>" required>
+                    <div class="invalid-feedback">A valid email is required.</div>
                 </div>
                 <div class="mb-3">
                     <label>Password <span class="required-mark">*</span></label>
                     <div class="input-group">
-                        <input type="password" name="password" id="registerPassword" class="form-control password-input" data-hint-id="registerPasswordHint" minlength="6" required>
+                        <input type="password" name="password" id="registerPassword" class="form-control password-input" data-hint-id="registerPasswordHint" minlength="8" required>
                         <button class="btn btn-outline-secondary toggle-password" type="button" data-target="registerPassword" aria-label="Show password">
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
+                    <div class="invalid-feedback">Password is required.</div>
                     <div class="form-text text-muted mt-1 password-hint" id="registerPasswordHint" style="display:none;">Use at least 8 characters, with uppercase, lowercase, a number, and a special character.</div>
                 </div>
                 <div class="mb-3">
@@ -162,6 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
+                    <div class="invalid-feedback">Please confirm your password.</div>
                     <div class="form-text text-muted mt-1 password-hint" id="confirmPasswordHint" style="display:none;">Re-enter the same password to confirm it.</div>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Register</button>
@@ -250,6 +257,20 @@ document.querySelectorAll('.toggle-password').forEach(button => {
         button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     });
 });
+
+(function () {
+    'use strict';
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+})();
 </script>
 </body>
 </html>

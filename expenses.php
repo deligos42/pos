@@ -69,6 +69,7 @@ foreach ($expenses as $expense) {
     $total_expenses += (float)$expense['amount'];
 }
 
+$pageTitle = 'Expenses';
 include 'includes/header.php';
 ?>
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
@@ -94,11 +95,20 @@ include 'includes/header.php';
         <div class="card mb-3">
             <div class="card-header">Add Expense</div>
             <div class="card-body">
-                <form method="POST">
-                    <div class="mb-2"><input name="category" class="form-control" placeholder="Category" required></div>
+                <form method="POST" class="needs-validation" novalidate>
+                    <div class="mb-2">
+                        <input name="category" class="form-control" placeholder="Category" required>
+                        <div class="invalid-feedback">Category is required.</div>
+                    </div>
                     <div class="mb-2"><input name="description" class="form-control" placeholder="Description"></div>
-                    <div class="mb-2"><input name="amount" type="number" step="0.01" min="0.01" class="form-control" placeholder="Amount" required></div>
-                    <div class="mb-2"><input name="expense_date" type="date" class="form-control" value="<?= htmlspecialchars(date('Y-m-d')) ?>" required></div>
+                    <div class="mb-2">
+                        <input name="amount" type="number" step="0.01" min="0.01" class="form-control" placeholder="Amount" required>
+                        <div class="invalid-feedback">Amount is required and must be greater than zero.</div>
+                    </div>
+                    <div class="mb-2">
+                        <input name="expense_date" type="date" class="form-control" value="<?= htmlspecialchars(date('Y-m-d')) ?>" required>
+                        <div class="invalid-feedback">Expense date is required.</div>
+                    </div>
                     <button type="submit" name="add_expense" value="1" class="btn btn-primary">Add Expense</button>
                 </form>
             </div>

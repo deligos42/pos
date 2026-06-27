@@ -47,7 +47,24 @@ document.querySelectorAll('.alert').forEach(alertBox => {
         : 'info';
     window.showToast(message, type);
 });
+
+(function () {
+    'use strict';
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+})();
 </script>
+<footer class="text-start text-muted py-2 px-3" style="font-size:0.9rem; position:fixed; left:0; bottom:0; width:100%; background:rgba(255,255,255,0.92); z-index:1030; border-top:1px solid rgba(0,0,0,0.08);">
+    Developed by Deligos
+</footer>
 </body>
 </html>
 

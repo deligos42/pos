@@ -2,6 +2,7 @@
 require_once 'includes/auth.php';
 require_once 'config/db.php';
 require_once 'includes/functions.php';
+$pageTitle = 'Dashboard';
 
 $today = date('Y-m-d');
 $stmt = $pdo->prepare("SELECT COUNT(*) AS total_sales, COALESCE(SUM(grand_total),0) AS revenue FROM sales WHERE DATE(sale_date) = ?");

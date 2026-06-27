@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/auth.php';
 require_once 'config/db.php';
+$pageTitle = 'Profile';
 
 $message = '';
 $error = '';
@@ -208,10 +209,11 @@ include 'includes/header.php';
                         <div class="text-muted small"><?= htmlspecialchars($user['username']) ?></div>
                     </div>
                 </div>
-                <form method="POST" enctype="multipart/form-data">
+                <form method="POST" class="needs-validation" novalidate enctype="multipart/form-data">
                     <input type="hidden" name="action" value="upload_photo">
                     <div class="mb-3">
                         <input type="file" name="profile_photo" class="form-control" accept="image/jpeg,image/png,image/webp,image/gif" required>
+                        <div class="invalid-feedback">Choose a profile photo to upload.</div>
                         <div class="form-text">JPG, PNG, WEBP, or GIF. Max 2 MB.</div>
                     </div>
                     <button type="submit" class="btn btn-primary">
@@ -232,27 +234,32 @@ include 'includes/header.php';
         <div class="card">
             <div class="card-header">Account Details</div>
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" class="needs-validation" novalidate>
                     <input type="hidden" name="action" value="update_profile">
                     <div class="mb-3">
                         <label class="form-label" for="full_name">Full Name</label>
                         <input type="text" name="full_name" id="full_name" class="form-control" value="<?= htmlspecialchars($user['full_name']) ?>" required>
+                        <div class="invalid-feedback">Full name is required.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="username">Username</label>
                         <input type="text" name="username" id="username" class="form-control" value="<?= htmlspecialchars($user['username']) ?>" required>
+                        <div class="invalid-feedback">Username is required.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="phone">Phone Number</label>
                         <input type="tel" name="phone" id="phone" class="form-control" value="<?= htmlspecialchars($user['phone'] ?? '') ?>" required>
+                        <div class="invalid-feedback">Phone number is required.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="id_number">ID Number</label>
                         <input type="text" name="id_number" id="id_number" class="form-control" value="<?= htmlspecialchars($user['id_number'] ?? '') ?>" required>
+                        <div class="invalid-feedback">ID number is required.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="email">Email</label>
                         <input type="email" name="email" id="email" class="form-control" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required>
+                        <div class="invalid-feedback">A valid email is required.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Role</label>
@@ -274,7 +281,7 @@ include 'includes/header.php';
         <div class="card">
             <div class="card-header">Change Password</div>
             <div class="card-body">
-                <form method="POST">
+                <form method="POST" class="needs-validation" novalidate>
                     <input type="hidden" name="action" value="change_password">
                     <div class="mb-3">
                         <label class="form-label" for="current_password">Current Password</label>
@@ -284,6 +291,7 @@ include 'includes/header.php';
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
+                        <div class="invalid-feedback">Current password is required.</div>
                         <div class="form-text text-muted mt-1 password-hint" id="currentPasswordHint" style="display:none;">Enter your current password.</div>
                     </div>
                     <div class="mb-3">
@@ -294,6 +302,7 @@ include 'includes/header.php';
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
+                        <div class="invalid-feedback">New password is required.</div>
                         <div class="form-text text-muted mt-1 password-hint" id="newPasswordHint" style="display:none;">Use at least 8 characters, including uppercase, lowercase, a number, and a special character.</div>
                         <div class="form-text text-muted mt-1" id="newPasswordRules" style="display:none;">
                             <div class="small">Password requirements:</div>
@@ -314,6 +323,7 @@ include 'includes/header.php';
                                 <i class="bi bi-eye"></i>
                             </button>
                         </div>
+                        <div class="invalid-feedback">Password confirmation is required.</div>
                         <div class="form-text text-muted mt-1 password-hint" id="confirmNewPasswordHint" style="display:none;">Re-enter your new password to confirm it.</div>
                         <div class="form-text mt-1" id="confirmPasswordMatch" style="display:none;"></div>
                     </div>

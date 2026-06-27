@@ -5,6 +5,7 @@ require_once 'includes/functions.php';
 
 $customers = $pdo->query("SELECT id, first_name, last_name, phone FROM customers ORDER BY first_name")->fetchAll();
 $invoiceNo = generateInvoiceNo();
+$pageTitle = 'Point of Sale';
 include 'includes/header.php';
 ?>
 <h2>Point of Sale</h2>
