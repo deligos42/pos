@@ -12,6 +12,6 @@ $role = $_SESSION['role'] ?? 'cashier';
 if (isset($required_role) && $required_role === 'admin' && $role !== 'admin') {
     header('Location: ../dashboard.php');
     exit;
+
 }
-?>
 
