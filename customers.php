@@ -2,6 +2,8 @@
 require_once 'includes/auth.php';
 require_once 'config/db.php';
 $pageTitle = 'Customers';
+$message = '';
+$error = '';
 include 'includes/header.php';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_customer'])) {
@@ -10,10 +12,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_customer'])) {
     $email = trim($_POST['email']);
     $phone = trim($_POST['phone']);
 
-    $stmt = $pdo->prepare("INSERT INTO customers (first_name, last_name, email, phone) VALUES (?, ?, ?, ?)");
-    $stmt->execute([$fname, $lname, $email ?: null, $phone ?: null]);
-    header('Location: customers.php');
-    exit;
+    if (!$fname || !$lname) {
+        $error = 'First name and last name are required.';
+    } else {
+        try {
+            if ($email !== '') {
+                $check = $pdo->prepare("SELECT COUNT(*) FROM customers WHERE email = ?");
+                $check->execute([$email]);
+                if ($check->fetchColumn() > 0) {
+                    throw new Exception('A customer with that email already exists.');
+                }
+            }
+
+            $stmt = $pdo->prepare("INSERT INTO customers (first_name, last_name, email, phone) VALUES (?, ?, ?, ?)");
+            $stmt->execute([$fname, $lname, $email ?: null, $phone ?: null]);
+            header('Location: customers.php');
+            exit;
+        } catch (Exception $e) {
+            $error = 'Error: ' . $e->getMessage();
+        }
+    }
 }
 
 if (isset($_GET['delete'])) {
@@ -29,6 +47,12 @@ if (isset($_GET['delete'])) {
         <div class="card">
             <div class="card-header">Add Customer</div>
             <div class="card-body">
+                <?php if ($message): ?>
+                    <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
+                <?php endif; ?>
+                <?php if ($error): ?>
+                    <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+                <?php endif; ?>
                 <form method="POST" class="needs-validation" novalidate>
                     <div class="mb-2">
                         <input name="first_name" class="form-control" placeholder="First Name" required>
