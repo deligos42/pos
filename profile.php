@@ -7,26 +7,6 @@ $message = '';
 $error = '';
 $user_id = (int)($_SESSION['user_id'] ?? 0);
 
-try {
-    $pdo->query("SELECT profile_photo FROM users LIMIT 1");
-} catch (PDOException $e) {
-    $pdo->exec("ALTER TABLE users ADD COLUMN profile_photo varchar(255) DEFAULT NULL AFTER role");
-}
-
-$required_user_columns = [
-    'phone' => "ALTER TABLE users ADD COLUMN phone varchar(30) DEFAULT NULL AFTER full_name",
-    'id_number' => "ALTER TABLE users ADD COLUMN id_number varchar(50) DEFAULT NULL AFTER phone",
-    'email' => "ALTER TABLE users ADD COLUMN email varchar(100) DEFAULT NULL AFTER id_number",
-];
-
-foreach ($required_user_columns as $column => $sql) {
-    try {
-        $pdo->query("SELECT `$column` FROM users LIMIT 1");
-    } catch (PDOException $e) {
-        $pdo->exec($sql);
-    }
-}
-
 $stmt = $pdo->prepare("SELECT id, username, password, full_name, phone, id_number, email, role, profile_photo, created_at FROM users WHERE id = ?");
 $stmt->execute([$user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -38,6 +18,7 @@ if (!$user) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_post_csrf();
     $action = $_POST['action'] ?? '';
 
     if ($action === 'update_profile') {
@@ -128,6 +109,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!is_dir($upload_dir)) {
                     mkdir($upload_dir, 0755, true);
                 }
+                $deny_file = $upload_dir . '/.htaccess';
+                if (!is_file($deny_file)) {
+                    @file_put_contents($deny_file, "Options -Indexes\nphp_flag engine off\n<FilesMatch \"\\.(php|phtml|phar)$\">\n    Require all denied\n</FilesMatch>\n");
+                }
 
                 $filename = 'user_' . $user_id . '_' . bin2hex(random_bytes(8)) . '.' . $allowed_types[$mime];
                 $relative_path = 'assets/profile_photos/' . $filename;
@@ -210,6 +195,7 @@ include 'includes/header.php';
                     </div>
                 </div>
                 <form method="POST" class="needs-validation" novalidate enctype="multipart/form-data">
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="upload_photo">
                     <div class="mb-3">
                         <input type="file" name="profile_photo" class="form-control" accept="image/jpeg,image/png,image/webp,image/gif" required>
@@ -222,6 +208,7 @@ include 'includes/header.php';
                 </form>
                 <?php if (!empty($user['profile_photo'])): ?>
                     <form method="POST" class="mt-2">
+                        <?= csrf_field() ?>
                         <input type="hidden" name="action" value="remove_photo">
                         <button type="submit" class="btn btn-outline-danger btn-sm">
                             <i class="bi bi-trash"></i> Remove Photo
@@ -235,6 +222,7 @@ include 'includes/header.php';
             <div class="card-header">Account Details</div>
             <div class="card-body">
                 <form method="POST" class="needs-validation" novalidate>
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="update_profile">
                     <div class="mb-3">
                         <label class="form-label" for="full_name">Full Name</label>
@@ -282,6 +270,7 @@ include 'includes/header.php';
             <div class="card-header">Change Password</div>
             <div class="card-body">
                 <form method="POST" class="needs-validation" novalidate>
+                    <?= csrf_field() ?>
                     <input type="hidden" name="action" value="change_password">
                     <div class="mb-3">
                         <label class="form-label" for="current_password">Current Password</label>

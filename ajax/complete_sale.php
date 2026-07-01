@@ -1,6 +1,9 @@
 <?php
-session_start();
+require_once '../includes/security.php';
+
+start_secure_session();
 if (!isset($_SESSION['user_id'])) { http_response_code(401); exit; }
+if (!verify_csrf_request()) { http_response_code(403); exit; }
 
 require_once '../config/db.php';
 require_once '../includes/functions.php';
@@ -20,16 +23,29 @@ if (!$data || empty($data['items'])) {
     exit;
 }
 
-$invoice_no = $data['invoice_no'] ?? generateInvoiceNo();
-$customer_id = $data['customer_id'] ?: null;
-$discount = (float)($data['discount'] ?? 0);
+$invoice_no = preg_match('/^INV-\d{8}-[A-Za-z0-9]{4,16}$/', (string)($data['invoice_no'] ?? '')) ? (string)$data['invoice_no'] : generateInvoiceNo();
+$customer_id = !empty($data['customer_id']) ? validate_int($data['customer_id'], 1) : null;
+if (!empty($data['customer_id']) && $customer_id === null) {
+    header('Content-Type: application/json');
+    echo json_encode(['success' => false, 'message' => 'Invalid customer']);
+    exit;
+}
+$discount = validate_decimal($data['discount'] ?? 0, 0);
+if ($discount === null) {
+    $discount = 0;
+}
 $user_id = $_SESSION['user_id'];
 
 $total_amount = 0;
 foreach ($data['items'] as $item) {
-    $total_amount += (float)$item['unit_price'] * (int)$item['qty'];
+    $qty = validate_int($item['qty'] ?? null, 1);
+    $productId = validate_int($item['product_id'] ?? null, 1);
+    if ($qty === null || $productId === null) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Invalid sale item']);
+        exit;
+    }
 }
-$grand_total = $total_amount - $discount;
 
 try {
     // validate customer_id if provided
@@ -51,11 +67,7 @@ try {
         throw new Exception('Duplicate invoice_no: ' . $invoice_no);
     }
 
-    $stmt = $pdo->prepare("INSERT INTO sales (invoice_no, user_id, customer_id, total_amount, discount, grand_total, payment_method)
-                            VALUES (?, ?, ?, ?, ?, ?, 'Cash')");
-    $stmt->execute([$invoice_no, $user_id, $customer_id, $total_amount, $discount, $grand_total]);
-    $sale_id = $pdo->lastInsertId();
-
+    $saleItems = [];
     foreach ($data['items'] as $item) {
         $product_id = (int)$item['product_id'];
         $qty = (int)$item['qty'];
@@ -73,14 +85,33 @@ try {
 
         $unit_price = (float)$prod['price'];
         $line_total = $unit_price * $qty;
+        $total_amount += $line_total;
+        $saleItems[] = [
+            'product_id' => $product_id,
+            'qty' => $qty,
+            'unit_price' => $unit_price,
+            'line_total' => $line_total,
+        ];
+    }
 
+    if ($discount > $total_amount) {
+        throw new Exception('Discount cannot be greater than subtotal.');
+    }
+    $grand_total = $total_amount - $discount;
+
+    $stmt = $pdo->prepare("INSERT INTO sales (invoice_no, user_id, customer_id, total_amount, discount, grand_total, payment_method)
+                            VALUES (?, ?, ?, ?, ?, ?, 'Cash')");
+    $stmt->execute([$invoice_no, $user_id, $customer_id, $total_amount, $discount, $grand_total]);
+    $sale_id = $pdo->lastInsertId();
+
+    foreach ($saleItems as $item) {
         $stmt = $pdo->prepare("INSERT INTO sale_items (sale_id, product_id, qty, unit_price, total)
                                 VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$sale_id, $product_id, $qty, $unit_price, $line_total]);
+        $stmt->execute([$sale_id, $item['product_id'], $item['qty'], $item['unit_price'], $item['line_total']]);
 
         // stock deduction + log (updateStock will not start a nested transaction)
-        if (!updateStock($pdo, $product_id, -$qty, $user_id, 'sale', 'Sale #' . $invoice_no)) {
-            throw new Exception('Failed to update stock for product ' . $product_id);
+        if (!updateStock($pdo, $item['product_id'], -$item['qty'], $user_id, 'sale', 'Sale #' . $invoice_no)) {
+            throw new Exception('Failed to update stock for product ' . $item['product_id']);
         }
     }
 

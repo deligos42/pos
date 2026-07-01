@@ -1,5 +1,7 @@
 <?php
-session_start();
+require_once '../includes/security.php';
+
+start_secure_session();
 if (!isset($_SESSION['user_id'])) {
     http_response_code(401);
     exit;

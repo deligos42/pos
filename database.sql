@@ -22,6 +22,18 @@ INSERT INTO `users` (`username`, `password`, `full_name`, `role`) VALUES
 ('admin', '$2y$10$aWe9nvGwu6yKn07yCabdV.QJTFdubZe940QKx/Imgqt0fS9DJgmVe', 'Administrator', 'admin');
 -- password is "admin123"
 
+CREATE TABLE `recommendation_letters` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `ref_no` varchar(50) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `generated_by` int(11) DEFAULT NULL,
+  `generated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ref_no` (`ref_no`),
+  KEY `user_id` (`user_id`),
+  KEY `generated_by` (`generated_by`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE `categories` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,

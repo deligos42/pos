@@ -4,7 +4,7 @@ function sanitize($input) {
 }
 
 function generateInvoiceNo() {
-    return 'INV-' . date('Ymd') . '-' . rand(1000, 9999);
+    return 'INV-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(4)));
 }
 
 function getProductById($pdo, $id) {

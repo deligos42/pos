@@ -4,21 +4,6 @@ $required_role = 'admin';
 require_once 'includes/auth.php';
 require_once 'config/db.php';
 
-$pdo->exec(
-    "CREATE TABLE IF NOT EXISTS expenses (
-        id int(11) NOT NULL AUTO_INCREMENT,
-        user_id int(11) NOT NULL,
-        category varchar(100) NOT NULL,
-        description varchar(255) DEFAULT NULL,
-        amount decimal(10,2) NOT NULL,
-        expense_date date NOT NULL,
-        created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (id),
-        KEY user_id (user_id),
-        KEY expense_date (expense_date)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-);
-
 $start = $_GET['start'] ?? date('Y-m-01');
 $end = $_GET['end'] ?? date('Y-m-d');
 

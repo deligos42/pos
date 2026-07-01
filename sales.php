@@ -127,6 +127,17 @@ function generateInvoiceNo() {
 }
 
 function fmt(n){ return (Number(n) || 0).toFixed(2); }
+function csrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || '';
+}
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
 
 function receiptHasItems() {
     return cart.length > 0 || (lastReceiptData && lastReceiptData.items.length > 0);
@@ -164,7 +175,7 @@ function renderReceiptData(data) {
     let receiptItems = $('#receiptItems');
     receiptItems.empty();
     data.items.forEach(item => {
-        receiptItems.append(`<tr><td>${item.name}</td><td>${item.qty}</td><td>KSh ${fmt(item.total)}</td></tr>`);
+        receiptItems.append(`<tr><td>${escapeHtml(item.name)}</td><td>${item.qty}</td><td>KSh ${fmt(item.total)}</td></tr>`);
     });
 }
 
@@ -409,7 +420,7 @@ function renderCart() {
         subtotal += total;
         tbody.append(`
             <tr>
-                <td>${item.name}</td>
+                <td>${escapeHtml(item.name)}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-secondary qty-minus" data-index="${index}" type="button">-</button>
                     ${item.qty}
@@ -426,7 +437,7 @@ function renderCart() {
     let receiptItems = $('#receiptItems');
     receiptItems.empty();
     cart.forEach(item => {
-        receiptItems.append(`<tr><td>${item.name}</td><td>${item.qty}</td><td>KSh ${((item.price * item.qty).toFixed(2))}</td></tr>`);
+        receiptItems.append(`<tr><td>${escapeHtml(item.name)}</td><td>${item.qty}</td><td>KSh ${((item.price * item.qty).toFixed(2))}</td></tr>`);
     });
 
     $('#subtotal').text(fmt(subtotal));
@@ -446,8 +457,8 @@ function searchProducts(q) {
             data.forEach(p => {
                 html += `
                     <div class="d-flex justify-content-between border-bottom p-2 align-items-center">
-                        <span><strong>${p.name}</strong> (${p.sku}) - KSh ${parseFloat(p.price).toFixed(2)} | Stock: ${p.stock_qty}</span>
-                        <button class="btn btn-sm btn-primary add-to-cart" type="button" data-id="${p.id}" data-name="${p.name}" data-price="${p.price}" data-stock="${p.stock_qty}">+ Add</button>
+                        <span><strong>${escapeHtml(p.name)}</strong> (${escapeHtml(p.sku)}) - KSh ${parseFloat(p.price).toFixed(2)} | Stock: ${parseInt(p.stock_qty, 10)}</span>
+                        <button class="btn btn-sm btn-primary add-to-cart" type="button" data-id="${parseInt(p.id, 10)}" data-name="${escapeHtml(p.name)}" data-price="${parseFloat(p.price)}" data-stock="${parseInt(p.stock_qty, 10)}">+ Add</button>
                     </div>
                 `;
             });
@@ -471,7 +482,7 @@ $(document).on('click', '.add-to-cart', function() {
         if (existing.qty < stock) existing.qty++;
         else notify('Not enough stock!', 'warning');
     } else {
-        if (stock > 0) cart.push({ id, name, price, qty: 1 });
+        if (stock > 0) cart.push({ id, name, price, qty: 1, stock });
         else notify('Out of stock!', 'warning');
     }
     renderCart();
@@ -479,7 +490,8 @@ $(document).on('click', '.add-to-cart', function() {
 
 $(document).on('click', '.qty-plus', function() {
     let idx = $(this).data('index');
-    cart[idx].qty++;
+    if (cart[idx].qty < cart[idx].stock) cart[idx].qty++;
+    else notify('Not enough stock!', 'warning');
     renderCart();
 });
 
@@ -529,6 +541,7 @@ $('#completeSaleBtn').on('click', function() {
         url: 'ajax/complete_sale.php',
         method: 'POST',
         contentType: 'application/json',
+        headers: { 'X-CSRF-Token': csrfToken() },
         data: JSON.stringify(saleData),
         dataType: 'json',
         success: function(res) {
@@ -556,4 +569,3 @@ $('#completeSaleBtn').on('click', function() {
 renderCart();
 </script>
 <?php include 'includes/footer.php'; ?>
-

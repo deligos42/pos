@@ -6,13 +6,16 @@ $message = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_customer'])) {
-    $fname = trim($_POST['first_name']);
-    $lname = trim($_POST['last_name']);
-    $email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
+    require_post_csrf();
+    $fname = trim($_POST['first_name'] ?? '');
+    $lname = trim($_POST['last_name'] ?? '');
+    $email = trim($_POST['email'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
 
     if (!$fname || !$lname) {
         $error = 'First name and last name are required.';
+    } elseif ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Enter a valid email address.';
     } else {
         try {
             if ($email !== '') {
@@ -31,11 +34,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_customer'])) {
             $error = 'Error: ' . $e->getMessage();
         }
     }
-}
-
-if (isset($_GET['delete'])) {
-    $id = (int)$_GET['delete'];
-    $pdo->prepare("DELETE FROM customers WHERE id = ?")->execute([$id]);
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_customer'])) {
+    require_post_csrf();
+    $id = validate_int($_POST['customer_id'] ?? null, 1);
+    if ($id) {
+        $pdo->prepare("DELETE FROM customers WHERE id = ?")->execute([$id]);
+    }
     header('Location: customers.php');
     exit;
 }
@@ -56,6 +60,7 @@ include 'includes/header.php';
                     <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
                 <?php endif; ?>
                 <form method="POST" class="needs-validation" novalidate>
+                    <?= csrf_field() ?>
                     <div class="mb-2">
                         <input name="first_name" class="form-control" placeholder="First Name" required>
                         <div class="invalid-feedback">First name is required.</div>
@@ -86,7 +91,11 @@ include 'includes/header.php';
                             <td><?= htmlspecialchars((string)$c['phone']) ?></td>
                             <td><?= (int)$c['loyalty_points'] ?></td>
                             <td>
-                                <a href="customers.php?delete=<?= (int)$c['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Delete?')">Delete</a>
+                                <form method="POST" class="d-inline" onsubmit="return confirm('Delete?')">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="customer_id" value="<?= (int)$c['id'] ?>">
+                                    <button type="submit" name="delete_customer" value="1" class="btn btn-sm btn-danger">Delete</button>
+                                </form>
                             </td>
                         </tr>
                     <?php endforeach; ?>

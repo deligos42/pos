@@ -3,31 +3,17 @@ $required_role = 'admin';
 require_once 'includes/auth.php';
 require_once 'config/db.php';
 
-$pdo->exec(
-    "CREATE TABLE IF NOT EXISTS expenses (
-        id int(11) NOT NULL AUTO_INCREMENT,
-        user_id int(11) NOT NULL,
-        category varchar(100) NOT NULL,
-        description varchar(255) DEFAULT NULL,
-        amount decimal(10,2) NOT NULL,
-        expense_date date NOT NULL,
-        created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        PRIMARY KEY (id),
-        KEY user_id (user_id),
-        KEY expense_date (expense_date)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4"
-);
-
 $message = '';
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_expense'])) {
+    require_post_csrf();
     $category = trim($_POST['category'] ?? '');
     $description = trim($_POST['description'] ?? '');
-    $amount = (float)($_POST['amount'] ?? 0);
+    $amount = validate_decimal($_POST['amount'] ?? null, 0.01);
     $expense_date = $_POST['expense_date'] ?? date('Y-m-d');
 
-    if ($category === '' || $amount <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $expense_date)) {
+    if ($category === '' || $amount === null || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $expense_date)) {
         $error = 'Category, valid date, and amount greater than zero are required.';
     } else {
         $stmt = $pdo->prepare("INSERT INTO expenses (user_id, category, description, amount, expense_date) VALUES (?, ?, ?, ?, ?)");
@@ -35,11 +21,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_expense'])) {
         header('Location: expenses.php?added=1');
         exit;
     }
-}
-
-if (isset($_GET['delete'])) {
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_expense'])) {
+    require_post_csrf();
+    $id = validate_int($_POST['expense_id'] ?? null, 1);
     $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ?");
-    $stmt->execute([(int)$_GET['delete']]);
+    if ($id) {
+        $stmt->execute([$id]);
+    }
     header('Location: expenses.php?deleted=1');
     exit;
 }
@@ -96,6 +84,7 @@ include 'includes/header.php';
             <div class="card-header">Add Expense</div>
             <div class="card-body">
                 <form method="POST" class="needs-validation" novalidate>
+                    <?= csrf_field() ?>
                     <div class="mb-2">
                         <input name="category" class="form-control" placeholder="Category" required>
                         <div class="invalid-feedback">Category is required.</div>
@@ -135,7 +124,13 @@ include 'includes/header.php';
                             <td><?= htmlspecialchars((string)$expense['description']) ?></td>
                             <td>KSh <?= number_format((float)$expense['amount'], 2) ?></td>
                             <td><?= htmlspecialchars($expense['full_name']) ?></td>
-                            <td><a href="expenses.php?delete=<?= (int)$expense['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Delete this expense?')">Delete</a></td>
+                            <td>
+                                <form method="POST" class="d-inline" onsubmit="return confirm('Delete this expense?')">
+                                    <?= csrf_field() ?>
+                                    <input type="hidden" name="expense_id" value="<?= (int)$expense['id'] ?>">
+                                    <button type="submit" name="delete_expense" value="1" class="btn btn-sm btn-danger">Delete</button>
+                                </form>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                     <?php if (!$expenses): ?>
@@ -148,4 +143,3 @@ include 'includes/header.php';
     </div>
 </div>
 <?php include 'includes/footer.php'; ?>
-

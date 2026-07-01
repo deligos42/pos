@@ -1,5 +1,7 @@
 <?php
-session_start();
+require_once 'includes/security.php';
+
+start_secure_session();
 if (isset($_SESSION['user_id'])) {
     header('Location: dashboard.php');
     exit;
@@ -14,21 +16,8 @@ $phone = '';
 $id_number = '';
 $email = '';
 
-$required_user_columns = [
-    'phone' => "ALTER TABLE users ADD COLUMN phone varchar(30) DEFAULT NULL AFTER full_name",
-    'id_number' => "ALTER TABLE users ADD COLUMN id_number varchar(50) DEFAULT NULL AFTER phone",
-    'email' => "ALTER TABLE users ADD COLUMN email varchar(100) DEFAULT NULL AFTER id_number",
-];
-
-foreach ($required_user_columns as $column => $sql) {
-    try {
-        $pdo->query("SELECT `$column` FROM users LIMIT 1");
-    } catch (PDOException $e) {
-        $pdo->exec($sql);
-    }
-}
-
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_post_csrf();
     $full_name = trim($_POST['full_name'] ?? '');
     $username = trim($_POST['username'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
@@ -124,6 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
             <form method="POST" class="needs-validation" novalidate>
+                <?= csrf_field() ?>
                 <div class="mb-3">
                     <label>Full Name <span class="required-mark">*</span></label>
                     <input type="text" name="full_name" class="form-control" value="<?= htmlspecialchars($full_name) ?>" required autofocus>

@@ -1,5 +1,7 @@
 <?php
-session_start();
+require_once 'includes/security.php';
+
+start_secure_session();
 if (isset($_SESSION['user_id'])) {
     header('Location: dashboard.php');
     exit;
@@ -9,23 +11,37 @@ require_once 'config/db.php';
 $error = '';
 $login = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_post_csrf();
     $login = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
+    $attemptKey = 'login_attempts_' . sha1(strtolower($login) . '|' . ($_SERVER['REMOTE_ADDR'] ?? 'local'));
+    $attempt = $_SESSION[$attemptKey] ?? ['count' => 0, 'until' => 0];
 
-    $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1");
-    $stmt->execute([$login, $login]);
-    $user = $stmt->fetch();
-
-    if ($user && password_verify($password, $user['password'])) {
-        $_SESSION['user_id'] = $user['id'];
-        $_SESSION['username'] = $user['username'];
-        $_SESSION['full_name'] = $user['full_name'];
-        $_SESSION['role'] = $user['role'];
-        $_SESSION['profile_photo'] = $user['profile_photo'] ?? null;
-        header('Location: dashboard.php');
-        exit;
+    if (($attempt['until'] ?? 0) > time()) {
+        $error = 'Too many login attempts. Please try again in a few minutes.';
     } else {
-        $error = 'Invalid username or password.';
+
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1");
+        $stmt->execute([$login, $login]);
+        $user = $stmt->fetch();
+
+        if ($user && password_verify($password, $user['password'])) {
+            session_regenerate_id(true);
+            unset($_SESSION[$attemptKey]);
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['username'] = $user['username'];
+            $_SESSION['full_name'] = $user['full_name'];
+            $_SESSION['role'] = $user['role'];
+            $_SESSION['profile_photo'] = $user['profile_photo'] ?? null;
+            csrf_token();
+            header('Location: dashboard.php');
+            exit;
+        } else {
+            $attempt['count'] = (int)($attempt['count'] ?? 0) + 1;
+            $attempt['until'] = $attempt['count'] >= 5 ? time() + 300 : 0;
+            $_SESSION[$attemptKey] = $attempt;
+            $error = 'Invalid username or password.';
+        }
     }
 }
 ?>
@@ -71,6 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
             <form method="POST" class="needs-validation" novalidate>
+                <?= csrf_field() ?>
                 <div class="mb-3">
                     <label>Username or Email</label>
                     <input type="text" name="username" class="form-control" placeholder="Username or Email" value="<?= htmlspecialchars($login) ?>" required autofocus>

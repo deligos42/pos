@@ -21,42 +21,49 @@ if (isset($_GET['edit'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    require_post_csrf();
     if (isset($_POST['update_product']) && $isAdmin) {
-        $product_id = (int)$_POST['product_id'];
-        $sku = trim($_POST['sku']);
-        $name = trim($_POST['name']);
-        $price = (float)$_POST['price'];
-        $cost = isset($_POST['cost']) && $_POST['cost'] !== '' ? (float)$_POST['cost'] : 0;
-        $stock = (int)$_POST['stock_qty'];
-        $reorder = isset($_POST['reorder_level']) ? (int)$_POST['reorder_level'] : 5;
+        $product_id = validate_int($_POST['product_id'] ?? null, 1);
+        $sku = trim($_POST['sku'] ?? '');
+        $name = trim($_POST['name'] ?? '');
+        $price = validate_decimal($_POST['price'] ?? null, 0.01);
+        $cost = validate_decimal($_POST['cost'] ?? 0, 0);
+        $stock = validate_int($_POST['stock_qty'] ?? null, 0);
+        $reorder = validate_int($_POST['reorder_level'] ?? 5, 0);
 
-        $stmt = $pdo->prepare("UPDATE products SET sku = ?, name = ?, price = ?, cost = ?, stock_qty = ?, reorder_level = ? WHERE id = ?");
-        $stmt->execute([$sku, $name, $price, $cost, $stock, $reorder, $product_id]);
+        if ($product_id && $sku !== '' && $name !== '' && $price !== null && $cost !== null && $stock !== null && $reorder !== null) {
+            $stmt = $pdo->prepare("UPDATE products SET sku = ?, name = ?, price = ?, cost = ?, stock_qty = ?, reorder_level = ? WHERE id = ?");
+            $stmt->execute([$sku, $name, $price, $cost, $stock, $reorder, $product_id]);
+            header('Location: inventory.php');
+            exit;
+        }
+    }
+
+    if (isset($_POST['add_product']) && $isAdmin) {
+        $sku = trim($_POST['sku'] ?? '');
+        $name = trim($_POST['name'] ?? '');
+        $price = validate_decimal($_POST['price'] ?? null, 0.01);
+        $cost = validate_decimal($_POST['cost'] ?? 0, 0);
+        $stock = validate_int($_POST['stock_qty'] ?? null, 0);
+        $reorder = validate_int($_POST['reorder_level'] ?? 5, 0);
+
+        if ($sku !== '' && $name !== '' && $price !== null && $cost !== null && $stock !== null && $reorder !== null) {
+            $stmt = $pdo->prepare("INSERT INTO products (sku, name, price, cost, stock_qty, reorder_level)
+                                   VALUES (?, ?, ?, ?, ?, ?)");
+            $stmt->execute([$sku, $name, $price, $cost, $stock, $reorder]);
+            header('Location: inventory.php');
+            exit;
+        }
+    }
+
+    if (isset($_POST['delete_product']) && $isAdmin) {
+        $id = validate_int($_POST['product_id'] ?? null, 1);
+        if ($id) {
+            $pdo->prepare("DELETE FROM products WHERE id = ?")->execute([$id]);
+        }
         header('Location: inventory.php');
         exit;
     }
-
-    if (isset($_POST['add_product'])) {
-        $sku = trim($_POST['sku']);
-        $name = trim($_POST['name']);
-        $price = (float)$_POST['price'];
-        $cost = isset($_POST['cost']) && $_POST['cost'] !== '' ? (float)$_POST['cost'] : 0;
-        $stock = (int)$_POST['stock_qty'];
-        $reorder = isset($_POST['reorder_level']) ? (int)$_POST['reorder_level'] : 5;
-
-        $stmt = $pdo->prepare("INSERT INTO products (sku, name, price, cost, stock_qty, reorder_level)
-                               VALUES (?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$sku, $name, $price, $cost, $stock, $reorder]);
-        header('Location: inventory.php');
-        exit;
-    }
-}
-
-if (isset($_GET['delete'])) {
-    $id = (int)$_GET['delete'];
-    $pdo->prepare("DELETE FROM products WHERE id = ?")->execute([$id]);
-    header('Location: inventory.php');
-    exit;
 }
 
 include 'includes/header.php';
@@ -67,7 +74,9 @@ include 'includes/header.php';
         <div class="card">
             <div class="card-header"><?= $product_to_edit ? 'Edit Product' : 'Add Product' ?></div>
             <div class="card-body">
+                <?php if ($isAdmin): ?>
                 <form method="POST" class="needs-validation" novalidate>
+                    <?= csrf_field() ?>
                     <?php if ($product_to_edit): ?>
                         <input type="hidden" name="product_id" value="<?= (int)$product_to_edit['id'] ?>">
                     <?php endif; ?>
@@ -98,6 +107,9 @@ include 'includes/header.php';
                         <a href="inventory.php" class="btn btn-secondary ms-2">Cancel</a>
                     <?php endif; ?>
                 </form>
+                <?php else: ?>
+                    <p class="text-muted mb-0">Only admins can add or edit products.</p>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -122,8 +134,12 @@ include 'includes/header.php';
                             <td>
                                 <?php if ($isAdmin): ?>
                                     <a href="inventory.php?edit=<?= (int)$p['id'] ?>" class="btn btn-sm btn-secondary me-1">Edit</a>
+                                    <form method="POST" class="d-inline" onsubmit="return confirm('Delete?')">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="product_id" value="<?= (int)$p['id'] ?>">
+                                        <button type="submit" name="delete_product" value="1" class="btn btn-sm btn-danger">Delete</button>
+                                    </form>
                                 <?php endif; ?>
-                                <a href="inventory.php?delete=<?= (int)$p['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Delete?')">Delete</a>
                             </td>
                         </tr>
                     <?php endwhile; ?>

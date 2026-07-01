@@ -1,7 +1,5 @@
 Options -Indexes
 
-<FilesMatch "\.(sql|log|ini)$">
-    Order allow,deny
-    Deny from all
+<FilesMatch "(^\.env|^\.git|^composer\.(json|lock)$|^cookies\.txt$|^cli_response\.json$|^db_check\.json$|^test_sale\.json$|^response_raw\.txt$|^resp_verbose\.txt$|\.(sql|log|ini|bak|backup|old|dist)$)">
+    Require all denied
 </FilesMatch>
-

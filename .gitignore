@@ -20,6 +20,7 @@ resp_verbose.txt
 
 # User uploads
 assets/profile_photos/*
+!assets/profile_photos/.htaccess
 
 # AI/IDE helpers
 .agents/.env

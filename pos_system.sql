@@ -44,6 +44,20 @@ INSERT INTO `categories` (`id`, `name`) VALUES
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `recommendation_letters`
+--
+
+CREATE TABLE `recommendation_letters` (
+  `id` int(11) NOT NULL,
+  `ref_no` varchar(50) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `generated_by` int(11) DEFAULT NULL,
+  `generated_at` datetime NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `customers`
 --
 
@@ -317,6 +331,15 @@ ALTER TABLE `sale_items`
   ADD KEY `product_id` (`product_id`);
 
 --
+-- Indexes for table `recommendation_letters`
+--
+ALTER TABLE `recommendation_letters`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `ref_no` (`ref_no`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `generated_by` (`generated_by`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -368,6 +391,12 @@ ALTER TABLE `sales`
 --
 ALTER TABLE `sale_items`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+
+--
+-- AUTO_INCREMENT for table `recommendation_letters`
+--
+ALTER TABLE `recommendation_letters`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`

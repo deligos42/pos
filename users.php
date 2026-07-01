@@ -6,34 +6,57 @@ $pageTitle = 'Users';
 
 $message = '';
 $error = '';
+$form_username = '';
+$form_full_name = '';
+$form_role = 'cashier';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
+    require_post_csrf();
     $username = trim($_POST['username'] ?? '');
     $full_name = trim($_POST['full_name'] ?? '');
     $password = $_POST['password'] ?? '';
     $role = $_POST['role'] ?? 'cashier';
+    $form_username = $username;
+    $form_full_name = $full_name;
+    $form_role = in_array($role, ['admin', 'cashier'], true) ? $role : 'cashier';
 
     if (!$username || !$full_name || !$password) {
         $error = 'All fields are required.';
+    } elseif (strlen($password) < 8 || !preg_match('/[A-Z]/', $password) || !preg_match('/[a-z]/', $password) || !preg_match('/\d/', $password) || !preg_match('/[^a-zA-Z\d]/', $password)) {
+        $error = 'Password must be 8+ characters and include uppercase, lowercase, a number, and a special symbol.';
     } else {
         try {
+            $stmt = $pdo->prepare("SELECT id FROM users WHERE username = ? LIMIT 1");
+            $stmt->execute([$username]);
+
+            if ($stmt->fetch()) {
+                throw new RuntimeException('DUPLICATE_USERNAME');
+            }
+
             $pdo->beginTransaction();
             $hash = password_hash($password, PASSWORD_DEFAULT);
             $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, role) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$username, $hash, $full_name, $role]);
+            $stmt->execute([$username, $hash, $full_name, $form_role]);
             $pdo->commit();
             $message = 'User added successfully!';
+            $form_username = '';
+            $form_full_name = '';
+            $form_role = 'cashier';
         } catch (Exception $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
-            $error = 'Error: ' . $e->getMessage();
+
+            if ($e->getMessage() === 'DUPLICATE_USERNAME' || ($e instanceof PDOException && $e->getCode() === '23000')) {
+                $error = 'Username "' . $username . '" is already taken. Please choose another username.';
+            } else {
+                $error = 'We could not add this user right now. Please try again.';
+            }
         }
     }
-}
-
-if (isset($_GET['delete'])) {
-    $id = (int)$_GET['delete'];
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
+    require_post_csrf();
+    $id = validate_int($_POST['user_id'] ?? null, 1) ?? 0;
     if ($id !== (int)($_SESSION['user_id'] ?? 0)) {
         $pdo->prepare("DELETE FROM users WHERE id = ?")->execute([$id]);
     }
@@ -56,12 +79,13 @@ include 'includes/header.php';
             <div class="card-header">Add User</div>
             <div class="card-body">
                 <form method="POST" class="needs-validation" novalidate>
+                    <?= csrf_field() ?>
                     <div class="mb-2">
-                        <input name="username" class="form-control" placeholder="Username" required>
+                        <input name="username" class="form-control" placeholder="Username" value="<?= htmlspecialchars($form_username) ?>" required>
                         <div class="invalid-feedback">Username is required.</div>
                     </div>
                     <div class="mb-2">
-                        <input name="full_name" class="form-control" placeholder="Full Name" required>
+                        <input name="full_name" class="form-control" placeholder="Full Name" value="<?= htmlspecialchars($form_full_name) ?>" required>
                         <div class="invalid-feedback">Full name is required.</div>
                     </div>
                     <div class="mb-2">
@@ -75,8 +99,8 @@ include 'includes/header.php';
                     </div>
                     <div class="mb-2">
                         <select name="role" class="form-select">
-                            <option value="cashier">Cashier</option>
-                            <option value="admin">Admin</option>
+                            <option value="cashier" <?= $form_role === 'cashier' ? 'selected' : '' ?>>Cashier</option>
+                            <option value="admin" <?= $form_role === 'admin' ? 'selected' : '' ?>>Admin</option>
                         </select>
                     </div>
                     <button type="submit" name="add_user" value="1" class="btn btn-primary">Add User</button>
@@ -98,8 +122,21 @@ include 'includes/header.php';
                             <td><?= htmlspecialchars($u['full_name']) ?></td>
                             <td><?= htmlspecialchars($u['role']) ?></td>
                             <td>
+                                <?php if ($u['role'] === 'cashier'): ?>
+                                    <form method="POST" action="download_recommendation.php" class="d-inline">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="id" value="<?= (int)$u['id'] ?>">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-file-earmark-pdf"></i> Recommendation PDF
+                                        </button>
+                                    </form>
+                                <?php endif; ?>
                                 <?php if ((int)$u['id'] !== (int)($_SESSION['user_id'] ?? 0)): ?>
-                                    <a href="users.php?delete=<?= (int)$u['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Delete?')">Delete</a>
+                                    <form method="POST" class="d-inline" onsubmit="return confirm('Delete?')">
+                                        <?= csrf_field() ?>
+                                        <input type="hidden" name="user_id" value="<?= (int)$u['id'] ?>">
+                                        <button type="submit" name="delete_user" value="1" class="btn btn-sm btn-danger">Delete</button>
+                                    </form>
                                 <?php endif; ?>
                             </td>
                         </tr>
