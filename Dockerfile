@@ -1,7 +1,7 @@
 FROM php:8.2-apache
 
 RUN apt-get update \
-    && apt-get install -y libzip-dev \
+    && apt-get install -y libzip-dev unzip \
     && docker-php-ext-install pdo_mysql \
     && rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf \
     && a2enmod mpm_prefork rewrite \
@@ -10,10 +10,17 @@ RUN apt-get update \
     && sed -i 's/AllowOverride None/AllowOverride All/g' /etc/apache2/apache2.conf \
     && rm -rf /var/lib/apt/lists/*
 
+WORKDIR /var/www/html
+
+COPY composer.json composer.lock ./
+RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
+    && php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
+    && php -r "unlink('composer-setup.php');" \
+    && composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+
 COPY . /var/www/html/
 RUN chown -R www-data:www-data /var/www/html
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-WORKDIR /var/www/html
 EXPOSE 8080
 CMD ["docker-entrypoint.sh"]
