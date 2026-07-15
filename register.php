@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <div class="mb-3">
                     <label>Email <span class="required-mark">*</span></label>
-                    <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($email) ?>" required>
+                    <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($email) ?>" autocomplete="email" required>
                     <div class="invalid-feedback">A valid email is required.</div>
                 </div>
                 <div class="mb-3">

@@ -4,10 +4,12 @@
 
 # Dependencies
 /vendor
-node_modules
+composer.phar
+composer-setup.php
+node_modules/
 
 # Logs
-logs/*
+logs/
 *.log
 
 # Test/Debug files
@@ -18,9 +20,34 @@ cookies.txt
 response_raw.txt
 resp_verbose.txt
 
+# Composer artifacts (keep composer.lock)
+# composer.lock
+
 # User uploads
 assets/profile_photos/*
 !assets/profile_photos/.htaccess
 
-# AI/IDE helpers
-.agents/.env
+# IDE/editor folders
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# PHP / tooling
+.phpunit.result.cache
+.php_cs.cache
+.php_cs.dist
+.phpstorm.meta.php
+
+# npm / yarn
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+.env.backup
+/.cache
+

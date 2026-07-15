@@ -246,7 +246,7 @@ include 'includes/header.php';
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="email">Email</label>
-                        <input type="email" name="email" id="email" class="form-control" value="<?= htmlspecialchars($user['email'] ?? '') ?>" required>
+                        <input type="email" name="email" id="email" class="form-control" value="<?= htmlspecialchars($user['email'] ?? '') ?>" autocomplete="email" required>
                         <div class="invalid-feedback">A valid email is required.</div>
                     </div>
                     <div class="mb-3">

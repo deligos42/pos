@@ -46,6 +46,29 @@ document.querySelectorAll('.alert').forEach(alertBox => {
 });
 
 (() => {
+    const validateEmailInput = input => {
+        if (!input) {
+            return;
+        }
+
+        const value = input.value.trim();
+        if (!value) {
+            input.setCustomValidity('');
+            return;
+        }
+
+        input.setCustomValidity(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? '' : 'Please enter a valid email address.');
+    };
+
+    document.querySelectorAll('input[type="email"]').forEach(input => {
+        input.addEventListener('input', () => validateEmailInput(input));
+        input.addEventListener('blur', () => validateEmailInput(input));
+        input.addEventListener('change', () => validateEmailInput(input));
+        validateEmailInput(input);
+    });
+})();
+
+(() => {
     'use strict';
     const forms = document.querySelectorAll('.needs-validation');
     Array.prototype.slice.call(forms).forEach(form => {

@@ -10,9 +10,11 @@ require_once 'config/db.php';
 
 $error = '';
 $login = '';
+$login_type = 'username';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_post_csrf();
     $login = trim($_POST['username'] ?? '');
+    $login_type = in_array($_POST['login_type'] ?? 'username', ['username', 'email'], true) ? $_POST['login_type'] : 'username';
     $password = $_POST['password'] ?? '';
     $attemptKey = 'login_attempts_' . sha1(strtolower($login) . '|' . ($_SERVER['REMOTE_ADDR'] ?? 'local'));
     $attempt = $_SESSION[$attemptKey] ?? ['count' => 0, 'until' => 0];
@@ -20,27 +22,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (($attempt['until'] ?? 0) > time()) {
         $error = 'Too many login attempts. Please try again in a few minutes.';
     } else {
-
-        $stmt = $pdo->prepare("SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1");
-        $stmt->execute([$login, $login]);
-        $user = $stmt->fetch();
-
-        if ($user && password_verify($password, $user['password'])) {
-            session_regenerate_id(true);
-            unset($_SESSION[$attemptKey]);
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
-            $_SESSION['full_name'] = $user['full_name'];
-            $_SESSION['role'] = $user['role'];
-            $_SESSION['profile_photo'] = $user['profile_photo'] ?? null;
-            csrf_token();
-            header('Location: dashboard.php');
-            exit;
+        if ($login_type === 'email' && $login !== '' && !filter_var($login, FILTER_VALIDATE_EMAIL)) {
+            $error = 'Please enter a valid email address.';
         } else {
-            $attempt['count'] = (int)($attempt['count'] ?? 0) + 1;
-            $attempt['until'] = $attempt['count'] >= 5 ? time() + 300 : 0;
-            $_SESSION[$attemptKey] = $attempt;
-            $error = 'Invalid username or password.';
+            $query = $login_type === 'email'
+                ? 'SELECT * FROM users WHERE email = ? LIMIT 1'
+                : 'SELECT * FROM users WHERE username = ? LIMIT 1';
+            $stmt = $pdo->prepare($query);
+            $stmt->execute([$login]);
+            $user = $stmt->fetch();
+
+            if ($user && password_verify($password, $user['password'])) {
+                session_regenerate_id(true);
+                unset($_SESSION[$attemptKey]);
+                $_SESSION['user_id'] = $user['id'];
+                $_SESSION['username'] = $user['username'];
+                $_SESSION['full_name'] = $user['full_name'];
+                $_SESSION['role'] = $user['role'];
+                $_SESSION['profile_photo'] = $user['profile_photo'] ?? null;
+                csrf_token();
+                header('Location: dashboard.php');
+                exit;
+            } else {
+                $attempt['count'] = (int)($attempt['count'] ?? 0) + 1;
+                $attempt['until'] = $attempt['count'] >= 5 ? time() + 300 : 0;
+                $_SESSION[$attemptKey] = $attempt;
+                $error = 'Invalid username or password.';
+            }
         }
     }
 }
@@ -89,9 +97,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <form method="POST" class="needs-validation" novalidate>
                 <?= csrf_field() ?>
                 <div class="mb-3">
-                    <label>Username or Email</label>
-                    <input type="text" name="username" class="form-control" placeholder="Username or Email" value="<?= htmlspecialchars($login) ?>" required autofocus>
-                    <div class="invalid-feedback">Username or email is required.</div>
+                    <label class="form-label">Login with</label>
+                    <div class="btn-group w-100" role="group" aria-label="Login method">
+                        <input type="radio" class="btn-check" name="login_type" id="loginTypeUsername" value="username" <?= $login_type === 'username' ? 'checked' : '' ?>>
+                        <label class="btn btn-outline-secondary" for="loginTypeUsername">Username</label>
+                        <input type="radio" class="btn-check" name="login_type" id="loginTypeEmail" value="email" <?= $login_type === 'email' ? 'checked' : '' ?>>
+                        <label class="btn btn-outline-secondary" for="loginTypeEmail">Email</label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label id="loginFieldLabel">Username</label>
+                    <input type="text" name="username" id="loginField" class="form-control" placeholder="Username" value="<?= htmlspecialchars($login) ?>" required autofocus>
+                    <div class="invalid-feedback">Username is required.</div>
                 </div>
                 <div class="mb-3">
                     <label>Password</label>
@@ -106,6 +123,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Login</button>
             </form>
+            <div class="mt-3 text-center">
+                <a href="forgot_password.php" class="small">Forgot password?</a>
+            </div>
             <div class="mt-3 text-center">
                 <span class="text-muted small">Don't have an account?</span>
                 <a href="register.php" class="small">Register</a>
@@ -160,6 +180,53 @@ document.querySelectorAll('.alert').forEach(alertBox => {
         : alertBox.classList.contains('alert-warning') ? 'warning'
         : 'info';
     window.showToast(message, type);
+});
+
+const loginTypeRadios = document.querySelectorAll('input[name="login_type"]');
+const loginField = document.getElementById('loginField');
+const loginFieldLabel = document.getElementById('loginFieldLabel');
+const loginFieldFeedback = loginField ? loginField.parentElement.querySelector('.invalid-feedback') : null;
+
+function updateLoginFieldMode() {
+    const selected = document.querySelector('input[name="login_type"]:checked')?.value || 'username';
+    if (!loginField) {
+        return;
+    }
+
+    if (selected === 'email') {
+        loginField.type = 'email';
+        loginField.placeholder = 'Email';
+        loginFieldLabel.textContent = 'Email';
+        if (loginFieldFeedback) {
+            loginFieldFeedback.textContent = 'A valid email is required.';
+        }
+    } else {
+        loginField.type = 'text';
+        loginField.placeholder = 'Username';
+        loginFieldLabel.textContent = 'Username';
+        if (loginFieldFeedback) {
+            loginFieldFeedback.textContent = 'Username is required.';
+        }
+    }
+}
+
+loginTypeRadios.forEach(radio => radio.addEventListener('change', updateLoginFieldMode));
+updateLoginFieldMode();
+
+document.querySelectorAll('input[type="email"]').forEach(input => {
+    const validateEmailInput = () => {
+        const value = input.value.trim();
+        if (!value) {
+            input.setCustomValidity('');
+            return;
+        }
+        input.setCustomValidity(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? '' : 'Please enter a valid email address.');
+    };
+
+    input.addEventListener('input', validateEmailInput);
+    input.addEventListener('blur', validateEmailInput);
+    input.addEventListener('change', validateEmailInput);
+    validateEmailInput();
 });
 
 document.querySelectorAll('.password-input').forEach(input => {

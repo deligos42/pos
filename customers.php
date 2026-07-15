@@ -69,7 +69,10 @@ include 'includes/header.php';
                         <input name="last_name" class="form-control" placeholder="Last Name" required>
                         <div class="invalid-feedback">Last name is required.</div>
                     </div>
-                    <div class="mb-2"><input name="email" type="email" class="form-control" placeholder="Email"></div>
+                    <div class="mb-2">
+                        <input name="email" type="email" class="form-control" placeholder="Email" autocomplete="email">
+                        <div class="invalid-feedback">A valid email is required if provided.</div>
+                    </div>
                     <div class="mb-2"><input name="phone" class="form-control" placeholder="Phone"></div>
                     <button type="submit" name="add_customer" class="btn btn-primary">Add</button>
                 </form>
