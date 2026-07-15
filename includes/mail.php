@@ -33,7 +33,9 @@ function send_password_reset_email(string $email, string $name, string $token): 
 
     $config = get_mail_config();
     if (empty($config['host'])) {
-        app_log('Password reset email skipped: SMTP host is not configured.');
+        $msg = 'Password reset email skipped: SMTP host is not configured.';
+        app_log($msg);
+        error_log($msg);
         return false;
     }
 
@@ -86,9 +88,18 @@ function send_password_reset_email(string $email, string $name, string $token): 
             'If you did not request this password reset, ignore this email.' . "\n\n" .
             'Regards, POS System';
 
-        return $mail->send();
+        $sent = $mail->send();
+        if (!$sent) {
+            $err = 'Password reset email failed: ' . ($mail->ErrorInfo ?? 'unknown');
+            app_log($err);
+            error_log($err);
+        }
+
+        return $sent;
     } catch (Exception $e) {
-        app_log('Password reset email failed: ' . $e->getMessage());
+        $msg = 'Password reset email failed: ' . $e->getMessage();
+        app_log($msg);
+        error_log($msg);
         return false;
     }
 }
