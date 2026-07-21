@@ -34,9 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([$user['id'], $token, $expiresAt]);
 
             send_password_reset_email($user['email'], $user['full_name'] ?? $user['email'], $token);
+            $success = 'A password reset link has been sent to that email address.';
+        } else {
+            $error = 'No account was found for that email address.';
         }
-
-        $success = 'If an account exists for that email address, a password reset link has been sent.';
     }
 }
 ?>
