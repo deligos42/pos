@@ -1,3 +1,39 @@
+# Node
+node_modules/
+
+# Environment
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+
+# PHPStorm
+/.phpstorm.meta.php
+
+# Composer
+/vendor/
+composer.phar
+
+# PHPUnit
+/coverage/
+
+# Uploads and temporary
+uploads/
+tmp/
+
+# Database files
+*.sqlite
+*.sqlite3
 # Environment
 .env
 .env.local
