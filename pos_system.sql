@@ -262,8 +262,11 @@ CREATE TABLE `users` (
   `email_verified` tinyint(1) NOT NULL DEFAULT 0,
   `email_verification_code` varchar(6) DEFAULT NULL,
   `email_verification_expires_at` datetime DEFAULT NULL,
+  `email_verification_resend_count` int(11) NOT NULL DEFAULT 0,
+  `email_verification_last_sent_at` datetime DEFAULT NULL,
   `profile_photo` varchar(255) DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT current_timestamp()
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  UNIQUE KEY `email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `password_resets` (
@@ -358,9 +361,8 @@ ALTER TABLE `recommendation_letters`
 --
 ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `username` (`username`);
-
---
+  ADD UNIQUE KEY `username` (`username`),
+  ADD UNIQUE KEY `email` (`email`);
 -- AUTO_INCREMENT for dumped tables
 --
 

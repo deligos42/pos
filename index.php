@@ -11,6 +11,8 @@ require_once 'config/db.php';
 $error = '';
 $login = '';
 $login_type = 'username';
+$show_verification_resend = false;
+$verification_resend_email = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_post_csrf();
     $login = trim($_POST['username'] ?? '');
@@ -34,6 +36,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if ($user && password_verify($password, $user['password'])) {
                 if (empty($user['email_verified'])) {
+                    $verification_resend_email = $user['email'] ?? '';
+                    $show_verification_resend = $verification_resend_email !== '';
                     $error = 'Please verify your email address before logging in. Check your inbox for the OTP.';
                 } else {
                     session_regenerate_id(true);
@@ -97,6 +101,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="card-body">
             <?php if ($error): ?>
                 <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+            <?php endif; ?>
+            <?php if ($show_verification_resend && $verification_resend_email): ?>
+                <div class="alert alert-warning">
+                    <a href="verify_email.php?email=<?= urlencode($verification_resend_email) ?>" class="text-decoration-none">Resend verification code</a> or complete verification.
+                </div>
             <?php endif; ?>
             <form method="POST" class="needs-validation" novalidate>
                 <?= csrf_field() ?>

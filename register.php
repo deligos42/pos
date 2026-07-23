@@ -62,11 +62,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, phone, id_number, email, role, email_verified, email_verification_code, email_verification_expires_at) VALUES (?, ?, ?, ?, ?, ?, 'cashier', 0, ?, ?)");
             $stmt->execute([$username, $hash, $full_name, $phone, $id_number, $email, $verificationCode, $expiresAt]);
+            $userId = $pdo->lastInsertId();
 
             $sent = send_email_verification_code($email, $full_name, $verificationCode);
             if ($sent) {
+                $stmt = $pdo->prepare('UPDATE users SET email_verification_resend_count = 1, email_verification_last_sent_at = NOW() WHERE id = ?');
+                $stmt->execute([$userId]);
                 $_SESSION['pending_verify_email'] = $email;
-                header('Location: verify_email.php');
+                header('Location: check_email.php');
                 exit;
             }
 

@@ -1,6 +1,45 @@
 <?php
 function sanitize($input) {
-    return htmlspecialchars(strip_tags(trim($input)));
+    return htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8');
+}
+
+function normalize_text(string $input): string
+{
+    return trim($input);
+}
+
+function normalize_email(string $email): string
+{
+    return strtolower(trim($email));
+}
+
+function validate_password_strength(string $password): ?string
+{
+    if (strlen($password) < 8) {
+        return 'Password must be at least 8 characters.';
+    }
+    if (!preg_match('/[A-Z]/', $password)) {
+        return 'Password must include at least one uppercase letter.';
+    }
+    if (!preg_match('/[a-z]/', $password)) {
+        return 'Password must include at least one lowercase letter.';
+    }
+    if (!preg_match('/\d/', $password)) {
+        return 'Password must include at least one number.';
+    }
+    if (!preg_match('/[^a-zA-Z\d]/', $password)) {
+        return 'Password must include at least one special character.';
+    }
+    return null;
+}
+
+function cleanup_stale_unverified_accounts(PDO $pdo, int $days = 7): int
+{
+    $stmt = $pdo->prepare(
+        'DELETE FROM users WHERE email_verified = 0 AND email_verification_expires_at IS NOT NULL AND email_verification_expires_at < DATE_SUB(NOW(), INTERVAL ? DAY)'
+    );
+    $stmt->execute([$days]);
+    return $stmt->rowCount();
 }
 
 function generateInvoiceNo() {

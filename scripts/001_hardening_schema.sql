@@ -7,7 +7,11 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS email_verified tinyint(1) NOT NULL DEFAULT 0 AFTER role,
   ADD COLUMN IF NOT EXISTS email_verification_code varchar(6) DEFAULT NULL AFTER email_verified,
   ADD COLUMN IF NOT EXISTS email_verification_expires_at datetime DEFAULT NULL AFTER email_verification_code,
-  ADD COLUMN IF NOT EXISTS profile_photo varchar(255) DEFAULT NULL AFTER email_verification_expires_at;
+  ADD COLUMN IF NOT EXISTS email_verification_resend_count int(11) NOT NULL DEFAULT 0 AFTER email_verification_expires_at,
+  ADD COLUMN IF NOT EXISTS email_verification_last_sent_at datetime DEFAULT NULL AFTER email_verification_resend_count,
+  ADD COLUMN IF NOT EXISTS profile_photo varchar(255) DEFAULT NULL AFTER email_verification_last_sent_at;
+
+ALTER TABLE users ADD UNIQUE KEY email (email);
 
 CREATE TABLE IF NOT EXISTS recommendation_letters (
   id int(11) NOT NULL AUTO_INCREMENT,
