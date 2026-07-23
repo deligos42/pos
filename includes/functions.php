@@ -45,6 +45,11 @@ function updateStock($pdo, $product_id, $qty_change, $user_id, $type, $note = ''
     }
 }
 
+function generate_email_verification_code(): string
+{
+    return (string)random_int(100000, 999999);
+}
+
 function ensure_password_resets_table_exists(PDO $pdo): void
 {
     $sql = <<<SQL

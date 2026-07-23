@@ -259,6 +259,9 @@ CREATE TABLE `users` (
   `id_number` varchar(50) DEFAULT NULL,
   `email` varchar(100) DEFAULT NULL,
   `role` enum('admin','cashier') NOT NULL DEFAULT 'cashier',
+  `email_verified` tinyint(1) NOT NULL DEFAULT 0,
+  `email_verification_code` varchar(6) DEFAULT NULL,
+  `email_verification_expires_at` datetime DEFAULT NULL,
   `profile_photo` varchar(255) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

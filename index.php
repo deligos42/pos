@@ -33,16 +33,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $user = $stmt->fetch();
 
             if ($user && password_verify($password, $user['password'])) {
-                session_regenerate_id(true);
-                unset($_SESSION[$attemptKey]);
-                $_SESSION['user_id'] = $user['id'];
-                $_SESSION['username'] = $user['username'];
-                $_SESSION['full_name'] = $user['full_name'];
-                $_SESSION['role'] = $user['role'];
-                $_SESSION['profile_photo'] = $user['profile_photo'] ?? null;
-                csrf_token();
-                header('Location: dashboard.php');
-                exit;
+                if (empty($user['email_verified'])) {
+                    $error = 'Please verify your email address before logging in. Check your inbox for the OTP.';
+                } else {
+                    session_regenerate_id(true);
+                    unset($_SESSION[$attemptKey]);
+                    $_SESSION['user_id'] = $user['id'];
+                    $_SESSION['username'] = $user['username'];
+                    $_SESSION['full_name'] = $user['full_name'];
+                    $_SESSION['role'] = $user['role'];
+                    $_SESSION['profile_photo'] = $user['profile_photo'] ?? null;
+                    csrf_token();
+                    header('Location: dashboard.php');
+                    exit;
+                }
             } else {
                 $attempt['count'] = (int)($attempt['count'] ?? 0) + 1;
                 $attempt['until'] = $attempt['count'] >= 5 ? time() + 300 : 0;

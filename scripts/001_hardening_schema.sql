@@ -4,7 +4,10 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS phone varchar(30) DEFAULT NULL AFTER full_name,
   ADD COLUMN IF NOT EXISTS id_number varchar(50) DEFAULT NULL AFTER phone,
   ADD COLUMN IF NOT EXISTS email varchar(100) DEFAULT NULL AFTER id_number,
-  ADD COLUMN IF NOT EXISTS profile_photo varchar(255) DEFAULT NULL AFTER role;
+  ADD COLUMN IF NOT EXISTS email_verified tinyint(1) NOT NULL DEFAULT 0 AFTER role,
+  ADD COLUMN IF NOT EXISTS email_verification_code varchar(6) DEFAULT NULL AFTER email_verified,
+  ADD COLUMN IF NOT EXISTS email_verification_expires_at datetime DEFAULT NULL AFTER email_verification_code,
+  ADD COLUMN IF NOT EXISTS profile_photo varchar(255) DEFAULT NULL AFTER email_verification_expires_at;
 
 CREATE TABLE IF NOT EXISTS recommendation_letters (
   id int(11) NOT NULL AUTO_INCREMENT,

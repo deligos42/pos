@@ -1,5 +1,7 @@
 <?php
 require_once 'includes/security.php';
+require_once 'includes/functions.php';
+require_once 'includes/mail.php';
 
 start_secure_session();
 if (isset($_SESSION['user_id'])) {
@@ -55,9 +57,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'That ID number is already registered.';
         } else {
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, phone, id_number, email, role) VALUES (?, ?, ?, ?, ?, ?, 'cashier')");
-            $stmt->execute([$username, $hash, $full_name, $phone, $id_number, $email]);
-            $message = 'Account created successfully. You can now log in.';
+            $verificationCode = generate_email_verification_code();
+            $expiresAt = (new DateTime('+1 hour'))->format('Y-m-d H:i:s');
+
+            $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, phone, id_number, email, role, email_verified, email_verification_code, email_verification_expires_at) VALUES (?, ?, ?, ?, ?, ?, 'cashier', 0, ?, ?)");
+            $stmt->execute([$username, $hash, $full_name, $phone, $id_number, $email, $verificationCode, $expiresAt]);
+
+            $sent = send_email_verification_code($email, $full_name, $verificationCode);
+            if ($sent) {
+                $_SESSION['pending_verify_email'] = $email;
+                header('Location: verify_email.php');
+                exit;
+            }
+
+            $message = 'Account created successfully, but we could not send the verification code. Please try again later.';
             $full_name = '';
             $username = '';
             $phone = '';
