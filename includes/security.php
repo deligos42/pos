@@ -78,7 +78,9 @@ function app_log(string $message): void
     if (!is_dir($dir)) {
         @mkdir($dir, 0755, true);
     }
-    @error_log('[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL, 3, $dir . '/app.log');
+    $line = '[' . date('Y-m-d H:i:s') . '] ' . $message . PHP_EOL;
+    @error_log($line, 3, $dir . '/app.log');
+    @error_log($line);
 }
 
 function validate_decimal($value, float $min = 0.0, ?float $max = null): ?float

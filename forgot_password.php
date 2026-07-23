@@ -33,8 +33,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)');
             $stmt->execute([$user['id'], $token, $expiresAt]);
 
-            send_password_reset_email($user['email'], $user['full_name'] ?? $user['email'], $token);
-            $success = 'A password reset link has been sent to that email address.';
+            $sent = send_password_reset_email($user['email'], $user['full_name'] ?? $user['email'], $token);
+            if ($sent) {
+                $success = 'A password reset link has been sent to that email address.';
+            } else {
+                $trackingId = bin2hex(random_bytes(6));
+                $error = 'Password reset request received, but the email could not be delivered. Please try again later or contact support with reference ID ' . $trackingId . '.';
+                app_log('Forgot password failed to send reset email for ' . $user['email'] . ' (ref: ' . $trackingId . ')');
+            }
         } else {
             $error = 'No account was found for that email address.';
         }

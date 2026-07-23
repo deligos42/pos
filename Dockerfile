@@ -1,8 +1,8 @@
 FROM php:8.2-apache
 
 RUN apt-get update \
-    && apt-get install -y libzip-dev unzip \
-    && docker-php-ext-install pdo_mysql \
+    && apt-get install -y libcurl4-openssl-dev libzip-dev unzip \
+    && docker-php-ext-install curl pdo_mysql \
     && rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf \
     && a2enmod mpm_prefork rewrite \
     && printf 'ServerName localhost\n' > /etc/apache2/conf-available/servername.conf \
