@@ -70,7 +70,9 @@ function cleanup_stale_unverified_accounts(PDO $pdo, int $days = 7): int
 }
 
 function generateInvoiceNo() {
-    return 'INV-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(4)));
+    // The sales.invoice_no column is varchar(20). This format is 19 characters:
+    // INV-YYYYMMDD-XXXXXX.
+    return 'INV-' . date('Ymd') . '-' . strtoupper(bin2hex(random_bytes(3)));
 }
 
 function getProductById($pdo, $id) {
@@ -132,5 +134,136 @@ CREATE TABLE IF NOT EXISTS password_resets (
 SQL;
 
     $pdo->exec($sql);
+}
+
+/**
+ * Log an audit trail entry for compliance and accountability
+ * 
+ * @param string $action - Action type: 'create', 'update', 'delete', 'approve', etc.
+ * @param string $entity_type - Entity being modified: 'sales', 'products', 'users', 'refunds', etc.
+ * @param int|null $entity_id - ID of the entity
+ * @param mixed $old_value - Previous value (for updates)
+ * @param mixed $new_value - New value (for updates/creates)
+ * @param string|null $reason - Reason for the change (optional)
+ * @return bool
+ */
+function audit_log(string $action, string $entity_type, ?int $entity_id, $old_value = null, $new_value = null, ?string $reason = null): bool
+{
+    try {
+        global $pdo;
+        if (!$pdo) return false;
+        
+        $user_id = $_SESSION['user_id'] ?? null;
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? null;
+        $user_agent = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 255);
+        
+        $stmt = $pdo->prepare(
+            "INSERT INTO audit_log (user_id, action, entity_type, entity_id, old_value, new_value, change_reason, ip_address, user_agent)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        );
+        
+        return $stmt->execute([
+            $user_id,
+            $action,
+            $entity_type,
+            $entity_id,
+            is_array($old_value) || is_object($old_value) ? json_encode($old_value) : $old_value,
+            is_array($new_value) || is_object($new_value) ? json_encode($new_value) : $new_value,
+            $reason,
+            $ip_address,
+            $user_agent
+        ]);
+    } catch (Throwable $e) {
+        app_log('Audit log failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Get user permissions from their role
+ * 
+ * @param int $user_id
+ * @return array Permission names
+ */
+function get_user_permissions(int $user_id): array
+{
+    try {
+        global $pdo;
+        if (!$pdo) return [];
+        
+        $stmt = $pdo->prepare(
+            "SELECT DISTINCT p.name FROM permissions p
+             JOIN role_permissions rp ON p.id = rp.permission_id
+             JOIN roles r ON rp.role_id = r.id
+             JOIN users u ON u.role_id = r.id
+             WHERE u.id = ? AND u.is_active = 1"
+        );
+        
+        $stmt->execute([$user_id]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    } catch (Throwable $e) {
+        app_log('Get permissions failed: ' . $e->getMessage());
+        return [];
+    }
+}
+
+/**
+ * Check if current user has a specific permission
+ * 
+ * @param string $permission - Permission name to check
+ * @return bool
+ */
+function user_can(string $permission): bool
+{
+    if (!isset($_SESSION['user_id'])) {
+        return false;
+    }
+    
+    // Admin always has all permissions
+    if (($_SESSION['role'] ?? '') === 'admin') {
+        return true;
+    }
+    
+    $permissions = get_user_permissions($_SESSION['user_id']);
+    return in_array($permission, $permissions, true);
+}
+
+/**
+ * Get user's primary role
+ * 
+ * @param int $user_id
+ * @return string|null
+ */
+function get_user_role(int $user_id): ?string
+{
+    try {
+        global $pdo;
+        if (!$pdo) return null;
+        
+        $stmt = $pdo->prepare("SELECT r.name FROM roles r JOIN users u ON u.role_id = r.id WHERE u.id = ?");
+        $stmt->execute([$user_id]);
+        return $stmt->fetchColumn() ?: null;
+    } catch (Throwable $e) {
+        app_log('Get user role failed: ' . $e->getMessage());
+        return null;
+    }
+}
+
+/**
+ * Require a specific permission or redirect
+ * Use at the start of admin pages
+ * 
+ * @param string $permission
+ * @param string $fallback_url
+ * @return void
+ */
+function require_permission(string $permission, string $fallback_url = 'dashboard.php'): void
+{
+    if (!user_can($permission)) {
+        http_response_code(403);
+        $_SESSION['error'] = 'You do not have permission to access this page.';
+        header("Location: $fallback_url");
+        exit;
+    }
 }
 

@@ -1,0 +1,13 @@
+# Protect admin directory
+<Directory>
+    Options -Indexes
+    
+    # Require authentication for all admin pages
+    # (Session-based auth is enforced by PHP code)
+</Directory>
+
+# Deny direct access to sensitive files
+<FilesMatch "\.(log|sql|db)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
