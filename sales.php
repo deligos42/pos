@@ -102,6 +102,7 @@ include 'includes/header.php';
             <div class="card-footer">
                 <button class="btn btn-secondary btn-sm" id="printReceiptBtn" type="button"><i class="bi bi-printer"></i> Print Receipt</button>
                 <button class="btn btn-success btn-sm" id="downloadReceiptBtn" type="button"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+                <a id="viewStoredReceiptBtn" class="btn btn-outline-primary btn-sm ms-2" href="#" style="display:none;" target="_blank"><i class="bi bi-receipt"></i> View Stored Receipt</a>
             </div>
         </div>
     </div>
@@ -557,6 +558,12 @@ $('#completeSaleBtn').on('click', function() {
                 $('#customerSelect').val('');
                 updateTotals();
                 renderReceiptData(lastReceiptData);
+                // Show link to stored receipt if server returned receipt_id
+                if (res.receipt_id) {
+                    $('#viewStoredReceiptBtn').attr('href', 'admin/receipt_view.php?id=' + encodeURIComponent(res.receipt_id)).show();
+                } else {
+                    $('#viewStoredReceiptBtn').hide();
+                }
             } else {
                 notify('Error: ' + (res.message || 'Unknown error'), 'error');
             }

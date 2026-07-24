@@ -118,8 +118,45 @@ try {
     $pdo->commit();
     cc_log('SUCCESS: Sale committed. Sale ID: ' . $sale_id . ', Invoice: ' . $invoice_no);
 
+    // Build a receipt snapshot and store it (non-blocking for client)
+    try {
+        $itemsStmt = $pdo->prepare(
+            "SELECT si.qty, si.unit_price, si.total, p.name AS product_name, p.sku
+             FROM sale_items si
+             JOIN products p ON si.product_id = p.id
+             WHERE si.sale_id = ? ORDER BY si.id ASC"
+        );
+        $itemsStmt->execute([(int)$sale_id]);
+        $items = $itemsStmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $snapshot = [
+            'sale_id' => (int)$sale_id,
+            'invoice_no' => $invoice_no,
+            'user_id' => $user_id,
+            'customer_id' => $customer_id,
+            'items' => array_map(function($it){
+                return [
+                    'name' => $it['product_name'],
+                    'sku' => $it['sku'],
+                    'qty' => (int)$it['qty'],
+                    'unit_price' => (float)$it['unit_price'],
+                    'total' => (float)$it['total']
+                ];
+            }, $items),
+            'total_amount' => (float)$total_amount,
+            'discount' => (float)$discount,
+            'grand_total' => (float)$grand_total,
+            'created_at' => date('Y-m-d H:i:s')
+        ];
+
+        // store_receipt_snapshot returns receipt id or false
+        $receipt_id = store_receipt_snapshot((int)$sale_id, $snapshot);
+    } catch (Throwable $e) {
+        cc_log('WARNING: Failed to store receipt snapshot: ' . $e->getMessage());
+    }
+
     header('Content-Type: application/json');
-    echo json_encode(['success' => true, 'invoice_no' => $invoice_no, 'sale_id' => (int)$sale_id]);
+    echo json_encode(['success' => true, 'invoice_no' => $invoice_no, 'sale_id' => (int)$sale_id, 'receipt_id' => isset($receipt_id) ? $receipt_id : null]);
     exit;
 } catch (Throwable $e) {
     cc_log('ERROR: Exception caught: ' . $e->getMessage());
