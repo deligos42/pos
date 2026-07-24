@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS `refunds` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `sale_id` int(11) NOT NULL,
-  `requested_by` int(11) NOT NULL,
+  `requested_by` int(11) DEFAULT NULL,
   `amount` decimal(10,2) NOT NULL,
   `reason` varchar(255) DEFAULT NULL,
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
