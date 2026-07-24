@@ -267,3 +267,107 @@ function require_permission(string $permission, string $fallback_url = 'dashboar
     }
 }
 
+/**
+ * Create a refund request for a sale
+ * @param int $sale_id
+ * @param float $amount
+ * @param string|null $reason
+ * @return int|false Refund ID or false on failure
+ */
+function create_refund_request(int $sale_id, float $amount, ?string $reason = null)
+{
+    try {
+        global $pdo;
+        if (!$pdo) return false;
+        $user_id = $_SESSION['user_id'] ?? null;
+        $stmt = $pdo->prepare("INSERT INTO refunds (sale_id, requested_by, amount, reason) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$sale_id, $user_id, $amount, $reason]);
+        $refund_id = (int)$pdo->lastInsertId();
+
+        audit_log('create', 'refunds', $refund_id, null, ['sale_id'=>$sale_id,'amount'=>$amount,'reason'=>$reason], 'Refund requested');
+        return $refund_id;
+    } catch (Throwable $e) {
+        app_log('create_refund_request failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Approve or reject a refund
+ * @param int $refund_id
+ * @param bool $approve
+ * @param string|null $note
+ * @return bool
+ */
+function approve_refund(int $refund_id, bool $approve = true, ?string $note = null): bool
+{
+    try {
+        global $pdo;
+        if (!$pdo) return false;
+        $approver = $_SESSION['user_id'] ?? null;
+        $status = $approve ? 'approved' : 'rejected';
+        $now = date('Y-m-d H:i:s');
+
+        $stmt = $pdo->prepare("UPDATE refunds SET status = ?, approved_by = ?, approved_at = ?, reason = COALESCE(reason, ?) WHERE id = ?");
+        $stmt->execute([$status, $approver, $now, $note, $refund_id]);
+
+        audit_log($approve ? 'approve' : 'reject', 'refunds', $refund_id, null, ['status'=>$status,'note'=>$note], 'Refund decision');
+        return true;
+    } catch (Throwable $e) {
+        app_log('approve_refund failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Store a receipt snapshot for a sale
+ * @param int $sale_id
+ * @param array $snapshot
+ * @return int|false
+ */
+function store_receipt_snapshot(int $sale_id, array $snapshot)
+{
+    try {
+        global $pdo;
+        if (!$pdo) return false;
+        $user_id = $_SESSION['user_id'] ?? null;
+        $stmt = $pdo->prepare("INSERT INTO receipts (sale_id, snapshot, created_by) VALUES (?, ?, ?)");
+        $stmt->execute([$sale_id, json_encode($snapshot), $user_id]);
+        $receipt_id = (int)$pdo->lastInsertId();
+
+        audit_log('create', 'receipts', $receipt_id, null, $snapshot, 'Receipt snapshot stored');
+        return $receipt_id;
+    } catch (Throwable $e) {
+        app_log('store_receipt_snapshot failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
+/**
+ * Create a cashier closing report
+ * @param int $cashier_id
+ * @param string $shift_start
+ * @param string $shift_end
+ * @param float $expected_total
+ * @param float $counted_cash
+ * @param string|null $notes
+ * @return int|false
+ */
+function create_closing_report(int $cashier_id, string $shift_start, string $shift_end, float $expected_total, float $counted_cash, ?string $notes = null)
+{
+    try {
+        global $pdo;
+        if (!$pdo) return false;
+        $discrepancy = $counted_cash - $expected_total;
+        $stmt = $pdo->prepare("INSERT INTO cashier_closing_reports (cashier_id, shift_start, shift_end, expected_total, counted_cash, discrepancy, notes) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$cashier_id, $shift_start, $shift_end, $expected_total, $counted_cash, $discrepancy, $notes]);
+        $report_id = (int)$pdo->lastInsertId();
+
+        audit_log('create', 'cashier_closing', $report_id, null, ['expected'=>$expected_total,'counted'=>$counted_cash,'discrepancy'=>$discrepancy], 'Closing report submitted');
+        return $report_id;
+    } catch (Throwable $e) {
+        app_log('create_closing_report failed: ' . $e->getMessage());
+        return false;
+    }
+}
+
