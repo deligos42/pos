@@ -5,6 +5,12 @@ node_modules/
 .env
 .env.*
 
+# Database credentials - local use only
+init_railway_db.php
+setup_railway.ps1
+RAILWAY_DATABASE_FIX.md
+test_db_connection.php
+
 # Logs
 logs/
 *.log
