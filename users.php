@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
             $form_username = '';
             $form_full_name = '';
             $form_role = 'cashier';
-        } catch (Exception $e) {
+        } catch (Throwable $e) {
             if ($pdo->inTransaction()) {
                 $pdo->rollBack();
             }
@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_user'])) {
             if ($e->getMessage() === 'DUPLICATE_USERNAME' || ($e instanceof PDOException && $e->getCode() === '23000')) {
                 $error = 'Username "' . $username . '" is already taken. Please choose another username.';
             } else {
-                $error = 'We could not add this user right now. Please try again.';
+                $error = app_exception_message($e, 'We could not add this user right now. Please try again.');
             }
         }
     }

@@ -3,7 +3,9 @@ ob_start();
 $required_role = 'admin';
 require_once 'includes/auth.php';
 require_once 'config/db.php';
+require_once 'includes/functions.php';
 
+$error = '';
 $start = $_GET['start'] ?? date('Y-m-01');
 $end = $_GET['end'] ?? date('Y-m-d');
 
@@ -207,9 +209,14 @@ $summaryStmt = $pdo->prepare(
 $summaryStmt->execute([$start, $end]);
 $summary = $summaryStmt->fetch();
 
-$expenseStmt = $pdo->prepare("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE expense_date BETWEEN ? AND ?");
-$expenseStmt->execute([$start, $end]);
-$expenses_total = (float)$expenseStmt->fetchColumn();
+try {
+    $expenseStmt = $pdo->prepare("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE expense_date BETWEEN ? AND ?");
+    $expenseStmt->execute([$start, $end]);
+    $expenses_total = (float)$expenseStmt->fetchColumn();
+} catch (Throwable $e) {
+    $error = app_exception_message($e, 'We could not load the expense summary right now. Please try again later.');
+    $expenses_total = 0.0;
+}
 
 $gross_sales = (float)($summary['gross_sales'] ?? 0);
 $cost_of_goods = (float)($summary['cost_of_goods'] ?? 0);

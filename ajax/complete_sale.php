@@ -19,7 +19,7 @@ cc_log('Request received. Data: ' . json_encode($data) . ' User: ' . $_SESSION['
 if (!$data || empty($data['items'])) {
     cc_log('ERROR: No data or empty items');
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'No items']);
+    echo json_encode(['success' => false, 'message' => app_error_message('No items', 'Please add at least one item before completing the sale.')]);
     exit;
 }
 
@@ -27,7 +27,7 @@ $invoice_no = preg_match('/^INV-\d{8}-[A-Za-z0-9]{4,16}$/', (string)($data['invo
 $customer_id = !empty($data['customer_id']) ? validate_int($data['customer_id'], 1) : null;
 if (!empty($data['customer_id']) && $customer_id === null) {
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Invalid customer']);
+    echo json_encode(['success' => false, 'message' => app_error_message('Invalid customer', 'The selected customer could not be validated.')]);
     exit;
 }
 $discount = validate_decimal($data['discount'] ?? 0, 0);
@@ -42,7 +42,7 @@ foreach ($data['items'] as $item) {
     $productId = validate_int($item['product_id'] ?? null, 1);
     if ($qty === null || $productId === null) {
         header('Content-Type: application/json');
-        echo json_encode(['success' => false, 'message' => 'Invalid sale item']);
+        echo json_encode(['success' => false, 'message' => app_error_message('Invalid sale item', 'One or more cart items are invalid.')]);
         exit;
     }
 }
@@ -53,7 +53,7 @@ try {
         $cstmt = $pdo->prepare("SELECT id FROM customers WHERE id = ?");
         $cstmt->execute([$customer_id]);
         if (!$cstmt->fetch()) {
-            throw new Exception('Invalid customer id: ' . $customer_id);
+            throw new RuntimeException('Invalid customer id: ' . $customer_id);
         }
     }
 
@@ -64,7 +64,7 @@ try {
     $istmt = $pdo->prepare("SELECT id FROM sales WHERE invoice_no = ?");
     $istmt->execute([$invoice_no]);
     if ($istmt->fetch()) {
-        throw new Exception('Duplicate invoice_no: ' . $invoice_no);
+        throw new RuntimeException('Duplicate invoice_no: ' . $invoice_no);
     }
 
     $saleItems = [];
@@ -77,10 +77,10 @@ try {
         $pstmt->execute([$product_id]);
         $prod = $pstmt->fetch(PDO::FETCH_ASSOC);
         if (!$prod) {
-            throw new Exception('Product not found: ' . $product_id);
+            throw new RuntimeException('Product not found: ' . $product_id);
         }
         if ((int)$prod['stock_qty'] < $qty) {
-            throw new Exception('Insufficient stock for product id ' . $product_id);
+            throw new RuntimeException('Insufficient stock for product id ' . $product_id);
         }
 
         $unit_price = (float)$prod['price'];
@@ -95,7 +95,7 @@ try {
     }
 
     if ($discount > $total_amount) {
-        throw new Exception('Discount cannot be greater than subtotal.');
+        throw new RuntimeException('Discount cannot be greater than subtotal.');
     }
     $grand_total = $total_amount - $discount;
 
@@ -111,7 +111,7 @@ try {
 
         // stock deduction + log (updateStock will not start a nested transaction)
         if (!updateStock($pdo, $item['product_id'], -$item['qty'], $user_id, 'sale', 'Sale #' . $invoice_no)) {
-            throw new Exception('Failed to update stock for product ' . $item['product_id']);
+            throw new RuntimeException('Failed to update stock for product ' . $item['product_id']);
         }
     }
 
@@ -121,11 +121,11 @@ try {
     header('Content-Type: application/json');
     echo json_encode(['success' => true, 'invoice_no' => $invoice_no, 'sale_id' => (int)$sale_id]);
     exit;
-} catch (Exception $e) {
+} catch (Throwable $e) {
     cc_log('ERROR: Exception caught: ' . $e->getMessage());
     if ($pdo->inTransaction()) { $pdo->rollBack(); }
     header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
+    echo json_encode(['success' => false, 'message' => app_exception_message($e, 'We could not complete the sale right now. Please try again.')]);
     exit;
 }
 

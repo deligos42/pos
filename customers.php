@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_customer'])) {
                 $check = $pdo->prepare("SELECT COUNT(*) FROM customers WHERE email = ?");
                 $check->execute([$email]);
                 if ($check->fetchColumn() > 0) {
-                    throw new Exception('A customer with that email already exists.');
+                    throw new RuntimeException('A customer with that email already exists.');
                 }
             }
 
@@ -30,8 +30,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_customer'])) {
             $stmt->execute([$fname, $lname, $email ?: null, $phone ?: null]);
             header('Location: customers.php');
             exit;
-        } catch (Exception $e) {
-            $error = 'Error: ' . $e->getMessage();
+        } catch (Throwable $e) {
+            $error = app_exception_message($e, 'We could not add the customer right now. Please try again.');
         }
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_customer'])) {

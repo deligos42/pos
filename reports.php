@@ -2,12 +2,19 @@
 ob_start();
 require_once 'includes/auth.php';
 require_once 'config/db.php';
+require_once 'includes/functions.php';
 
+$error = '';
 $start = $_GET['start'] ?? date('Y-m-01');
 $end = $_GET['end'] ?? date('Y-m-d');
 $cashier_id = isset($_GET['cashier_id']) ? (int)$_GET['cashier_id'] : 0;
 
-$cashiers = $pdo->query("SELECT id, full_name FROM users ORDER BY full_name")->fetchAll();
+try {
+    $cashiers = $pdo->query("SELECT id, full_name FROM users ORDER BY full_name")->fetchAll();
+} catch (Throwable $e) {
+    $error = app_exception_message($e, 'We could not load the cashier list right now. Please try again later.');
+    $cashiers = [];
+}
 $selected_cashier = 'All Cashiers';
 foreach ($cashiers as $cashier) {
     if ((int)$cashier['id'] === $cashier_id) {
@@ -23,16 +30,21 @@ if ($cashier_id > 0) {
     $params[] = $cashier_id;
 }
 
-$stmt = $pdo->prepare(
-    "SELECT s.*, u.full_name AS cashier, c.first_name, c.last_name
-     FROM sales s
-     LEFT JOIN users u ON s.user_id = u.id
-     LEFT JOIN customers c ON s.customer_id = c.id
-     WHERE " . implode(' AND ', $where) . "
-     ORDER BY s.sale_date DESC"
-);
-$stmt->execute($params);
-$sales = $stmt->fetchAll();
+try {
+    $stmt = $pdo->prepare(
+        "SELECT s.*, u.full_name AS cashier, c.first_name, c.last_name
+         FROM sales s
+         LEFT JOIN users u ON s.user_id = u.id
+         LEFT JOIN customers c ON s.customer_id = c.id
+         WHERE " . implode(' AND ', $where) . "
+         ORDER BY s.sale_date DESC"
+    );
+    $stmt->execute($params);
+    $sales = $stmt->fetchAll();
+} catch (Throwable $e) {
+    $error = app_exception_message($e, 'We could not load the sales report right now. Please try again later.');
+    $sales = [];
+}
 
 $total_revenue = 0;
 foreach ($sales as $s) { $total_revenue += (float)$s['grand_total']; }

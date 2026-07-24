@@ -1,6 +1,7 @@
 <?php
 require_once 'includes/auth.php';
 require_once 'config/db.php';
+require_once 'includes/functions.php';
 $pageTitle = 'Inventory';
 
 $role = $_SESSION['role'] ?? 'cashier';
@@ -20,6 +21,9 @@ if (isset($_GET['edit'])) {
     $product_to_edit = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
 }
 
+$message = '';
+$error = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_post_csrf();
     if (isset($_POST['update_product']) && $isAdmin) {
@@ -32,10 +36,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reorder = validate_int($_POST['reorder_level'] ?? 5, 0);
 
         if ($product_id && $sku !== '' && $name !== '' && $price !== null && $cost !== null && $stock !== null && $reorder !== null) {
-            $stmt = $pdo->prepare("UPDATE products SET sku = ?, name = ?, price = ?, cost = ?, stock_qty = ?, reorder_level = ? WHERE id = ?");
-            $stmt->execute([$sku, $name, $price, $cost, $stock, $reorder, $product_id]);
-            header('Location: inventory.php');
-            exit;
+            try {
+                $stmt = $pdo->prepare("UPDATE products SET sku = ?, name = ?, price = ?, cost = ?, stock_qty = ?, reorder_level = ? WHERE id = ?");
+                $stmt->execute([$sku, $name, $price, $cost, $stock, $reorder, $product_id]);
+                header('Location: inventory.php');
+                exit;
+            } catch (Throwable $e) {
+                $error = app_exception_message($e, 'We could not update the product right now. Please try again.');
+            }
+        } else {
+            $error = 'Please complete all required product fields before saving.';
         }
     }
 
@@ -48,27 +58,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reorder = validate_int($_POST['reorder_level'] ?? 5, 0);
 
         if ($sku !== '' && $name !== '' && $price !== null && $cost !== null && $stock !== null && $reorder !== null) {
-            $stmt = $pdo->prepare("INSERT INTO products (sku, name, price, cost, stock_qty, reorder_level)
+            try {
+                $stmt = $pdo->prepare("INSERT INTO products (sku, name, price, cost, stock_qty, reorder_level)
                                    VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->execute([$sku, $name, $price, $cost, $stock, $reorder]);
-            header('Location: inventory.php');
-            exit;
+                $stmt->execute([$sku, $name, $price, $cost, $stock, $reorder]);
+                header('Location: inventory.php');
+                exit;
+            } catch (Throwable $e) {
+                $error = app_exception_message($e, 'We could not add the product right now. Please try again.');
+            }
+        } else {
+            $error = 'Please complete all required product fields before adding a product.';
         }
     }
 
     if (isset($_POST['delete_product']) && $isAdmin) {
         $id = validate_int($_POST['product_id'] ?? null, 1);
-        if ($id) {
-            $pdo->prepare("DELETE FROM products WHERE id = ?")->execute([$id]);
+        try {
+            if ($id) {
+                $pdo->prepare("DELETE FROM products WHERE id = ?")->execute([$id]);
+            }
+            header('Location: inventory.php');
+            exit;
+        } catch (Throwable $e) {
+            $error = app_exception_message($e, 'We could not delete the product right now. Please try again.');
         }
-        header('Location: inventory.php');
-        exit;
     }
 }
 
 include 'includes/header.php';
 ?>
 <h2>Inventory</h2>
+<?php if ($message): ?>
+    <div class="alert alert-success"><?= htmlspecialchars($message) ?></div>
+<?php endif; ?>
+<?php if ($error): ?>
+    <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+<?php endif; ?>
 <div class="row">
     <div class="col-md-4">
         <div class="card">

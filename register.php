@@ -45,40 +45,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($password !== $confirm_password) {
         $error = 'Password and confirmation do not match.';
     } else {
-        $stmt = $pdo->prepare("SELECT username, email, id_number FROM users WHERE username = ? OR email = ? OR id_number = ? LIMIT 1");
-        $stmt->execute([$username, $email, $id_number]);
-        $existing_user = $stmt->fetch(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $pdo->prepare("SELECT username, email, id_number FROM users WHERE username = ? OR email = ? OR id_number = ? LIMIT 1");
+            $stmt->execute([$username, $email, $id_number]);
+            $existing_user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if ($existing_user && $existing_user['username'] === $username) {
-            $error = 'That username is already registered.';
-        } elseif ($existing_user && $existing_user['email'] === $email) {
-            $error = 'That email is already registered.';
-        } elseif ($existing_user && $existing_user['id_number'] === $id_number) {
-            $error = 'That ID number is already registered.';
-        } else {
-            $hash = password_hash($password, PASSWORD_DEFAULT);
-            $verificationCode = generate_email_verification_code();
-            $expiresAt = (new DateTime('+1 hour'))->format('Y-m-d H:i:s');
+            if ($existing_user && $existing_user['username'] === $username) {
+                $error = 'That username is already registered.';
+            } elseif ($existing_user && $existing_user['email'] === $email) {
+                $error = 'That email is already registered.';
+            } elseif ($existing_user && $existing_user['id_number'] === $id_number) {
+                $error = 'That ID number is already registered.';
+            } else {
+                $hash = password_hash($password, PASSWORD_DEFAULT);
+                $verificationCode = generate_email_verification_code();
+                $expiresAt = (new DateTime('+1 hour'))->format('Y-m-d H:i:s');
 
-            $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, phone, id_number, email, role, email_verified, email_verification_code, email_verification_expires_at) VALUES (?, ?, ?, ?, ?, ?, 'cashier', 0, ?, ?)");
-            $stmt->execute([$username, $hash, $full_name, $phone, $id_number, $email, $verificationCode, $expiresAt]);
-            $userId = $pdo->lastInsertId();
+                $stmt = $pdo->prepare("INSERT INTO users (username, password, full_name, phone, id_number, email, role, email_verified, email_verification_code, email_verification_expires_at) VALUES (?, ?, ?, ?, ?, ?, 'cashier', 0, ?, ?)");
+                $stmt->execute([$username, $hash, $full_name, $phone, $id_number, $email, $verificationCode, $expiresAt]);
+                $userId = $pdo->lastInsertId();
 
-            $sent = send_email_verification_code($email, $full_name, $verificationCode);
-            if ($sent) {
-                $stmt = $pdo->prepare('UPDATE users SET email_verification_resend_count = 1, email_verification_last_sent_at = NOW() WHERE id = ?');
-                $stmt->execute([$userId]);
-                $_SESSION['pending_verify_email'] = $email;
-                header('Location: check_email.php');
-                exit;
+                $sent = send_email_verification_code($email, $full_name, $verificationCode);
+                if ($sent) {
+                    $stmt = $pdo->prepare('UPDATE users SET email_verification_resend_count = 1, email_verification_last_sent_at = NOW() WHERE id = ?');
+                    $stmt->execute([$userId]);
+                    $_SESSION['pending_verify_email'] = $email;
+                    header('Location: check_email.php');
+                    exit;
+                }
+
+                $message = 'Account created successfully, but we could not send the verification code. Please try again later.';
+                $full_name = '';
+                $username = '';
+                $phone = '';
+                $id_number = '';
+                $email = '';
             }
-
-            $message = 'Account created successfully, but we could not send the verification code. Please try again later.';
-            $full_name = '';
-            $username = '';
-            $phone = '';
-            $id_number = '';
-            $email = '';
+        } catch (Throwable $e) {
+            $error = app_exception_message($e, 'We could not complete registration right now. Please try again later.');
         }
     }
 }

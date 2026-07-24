@@ -17,32 +17,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Please enter a valid email address.';
     } else {
-        ensure_password_resets_table_exists($pdo);
+        try {
+            ensure_password_resets_table_exists($pdo);
 
-        $stmt = $pdo->prepare('SELECT id, full_name, email FROM users WHERE email = ? LIMIT 1');
-        $stmt->execute([$email]);
-        $user = $stmt->fetch();
+            $stmt = $pdo->prepare('SELECT id, full_name, email FROM users WHERE email = ? LIMIT 1');
+            $stmt->execute([$email]);
+            $user = $stmt->fetch();
 
-        if ($user) {
-            $token = bin2hex(random_bytes(32));
-            $expiresAt = (new DateTime('+1 hour'))->format('Y-m-d H:i:s');
+            if ($user) {
+                $token = bin2hex(random_bytes(32));
+                $expiresAt = (new DateTime('+1 hour'))->format('Y-m-d H:i:s');
 
-            $stmt = $pdo->prepare('DELETE FROM password_resets WHERE user_id = ?');
-            $stmt->execute([$user['id']]);
+                $stmt = $pdo->prepare('DELETE FROM password_resets WHERE user_id = ?');
+                $stmt->execute([$user['id']]);
 
-            $stmt = $pdo->prepare('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)');
-            $stmt->execute([$user['id'], $token, $expiresAt]);
+                $stmt = $pdo->prepare('INSERT INTO password_resets (user_id, token, expires_at) VALUES (?, ?, ?)');
+                $stmt->execute([$user['id'], $token, $expiresAt]);
 
-            $sent = send_password_reset_email($user['email'], $user['full_name'] ?? $user['email'], $token);
-            if ($sent) {
-                $success = 'A password reset link has been sent to that email address.';
+                $sent = send_password_reset_email($user['email'], $user['full_name'] ?? $user['email'], $token);
+                if ($sent) {
+                    $success = 'A password reset link has been sent to that email address.';
+                } else {
+                    $trackingId = bin2hex(random_bytes(6));
+                    $error = 'Password reset request received, but the email could not be delivered. Please try again later or contact support with reference ID ' . $trackingId . '.';
+                    app_log('Forgot password failed to send reset email for ' . $user['email'] . ' (ref: ' . $trackingId . ')');
+                }
             } else {
-                $trackingId = bin2hex(random_bytes(6));
-                $error = 'Password reset request received, but the email could not be delivered. Please try again later or contact support with reference ID ' . $trackingId . '.';
-                app_log('Forgot password failed to send reset email for ' . $user['email'] . ' (ref: ' . $trackingId . ')');
+                $error = 'No account was found for that email address.';
             }
-        } else {
-            $error = 'No account was found for that email address.';
+        } catch (Throwable $e) {
+            $error = app_exception_message($e, 'We could not process the password reset request right now. Please try again later.');
         }
     }
 }

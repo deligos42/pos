@@ -2,6 +2,7 @@
 $required_role = 'admin';
 require_once 'includes/auth.php';
 require_once 'config/db.php';
+require_once 'includes/functions.php';
 
 $message = '';
 $error = '';
@@ -16,20 +17,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_expense'])) {
     if ($category === '' || $amount === null || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $expense_date)) {
         $error = 'Category, valid date, and amount greater than zero are required.';
     } else {
-        $stmt = $pdo->prepare("INSERT INTO expenses (user_id, category, description, amount, expense_date) VALUES (?, ?, ?, ?, ?)");
-        $stmt->execute([$_SESSION['user_id'], $category, $description ?: null, $amount, $expense_date]);
-        header('Location: expenses.php?added=1');
-        exit;
+        try {
+            $stmt = $pdo->prepare("INSERT INTO expenses (user_id, category, description, amount, expense_date) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$_SESSION['user_id'], $category, $description ?: null, $amount, $expense_date]);
+            header('Location: expenses.php?added=1');
+            exit;
+        } catch (Throwable $e) {
+            $error = app_exception_message($e, 'We could not add the expense right now. Please try again.');
+        }
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_expense'])) {
     require_post_csrf();
     $id = validate_int($_POST['expense_id'] ?? null, 1);
-    $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ?");
-    if ($id) {
-        $stmt->execute([$id]);
+    try {
+        $stmt = $pdo->prepare("DELETE FROM expenses WHERE id = ?");
+        if ($id) {
+            $stmt->execute([$id]);
+        }
+        header('Location: expenses.php?deleted=1');
+        exit;
+    } catch (Throwable $e) {
+        $error = app_exception_message($e, 'We could not delete the expense right now. Please try again.');
     }
-    header('Location: expenses.php?deleted=1');
-    exit;
 }
 
 if (isset($_GET['added'])) {

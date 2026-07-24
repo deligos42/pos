@@ -24,44 +24,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $error = 'Please enter a valid email address to resend the verification code.';
         } else {
-            $stmt = $pdo->prepare('SELECT id, full_name, email_verification_resend_count, email_verification_last_sent_at FROM users WHERE email = ? AND email_verified = 0 LIMIT 1');
-            $stmt->execute([$email]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            try {
+                $stmt = $pdo->prepare('SELECT id, full_name, email_verification_resend_count, email_verification_last_sent_at FROM users WHERE email = ? AND email_verified = 0 LIMIT 1');
+                $stmt->execute([$email]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (!$user) {
-                $error = 'No unverified account was found for that email address.';
-            } else {
-                $now = new DateTime();
-                $lastSent = $user['email_verification_last_sent_at'] ? new DateTime($user['email_verification_last_sent_at']) : null;
-                $resendCount = (int)($user['email_verification_resend_count'] ?? 0);
-                $cooldownSeconds = 300;
-                $windowSeconds = 3600;
-                $maxResends = 5;
-
-                if ($lastSent !== null && $now->getTimestamp() - $lastSent->getTimestamp() < $cooldownSeconds) {
-                    $remaining = $cooldownSeconds - ($now->getTimestamp() - $lastSent->getTimestamp());
-                    $error = 'Please wait another ' . ceil($remaining / 60) . ' minute(s) before requesting a new code.';
-                } elseif ($lastSent !== null && $now->getTimestamp() - $lastSent->getTimestamp() < $windowSeconds && $resendCount >= $maxResends) {
-                    $error = 'You have reached the maximum number of resend attempts. Please try again in an hour.';
+                if (!$user) {
+                    $error = 'No unverified account was found for that email address.';
                 } else {
-                    $verificationCode = generate_email_verification_code();
-                    $expiresAt = (new DateTime('+1 hour'))->format('Y-m-d H:i:s');
-                    if ($lastSent === null || $now->getTimestamp() - $lastSent->getTimestamp() > $windowSeconds) {
-                        $resendCount = 1;
-                    } else {
-                        $resendCount++;
-                    }
+                    $now = new DateTime();
+                    $lastSent = $user['email_verification_last_sent_at'] ? new DateTime($user['email_verification_last_sent_at']) : null;
+                    $resendCount = (int)($user['email_verification_resend_count'] ?? 0);
+                    $cooldownSeconds = 300;
+                    $windowSeconds = 3600;
+                    $maxResends = 5;
 
-                    $stmt = $pdo->prepare('UPDATE users SET email_verification_code = ?, email_verification_expires_at = ?, email_verification_resend_count = ?, email_verification_last_sent_at = ? WHERE id = ?');
-                    $stmt->execute([$verificationCode, $expiresAt, $resendCount, $now->format('Y-m-d H:i:s'), $user['id']]);
-
-                    if (send_email_verification_code($email, $user['full_name'], $verificationCode)) {
-                        $_SESSION['pending_verify_email'] = $email;
-                        $success = 'A new verification code has been sent to your email address.';
+                    if ($lastSent !== null && $now->getTimestamp() - $lastSent->getTimestamp() < $cooldownSeconds) {
+                        $remaining = $cooldownSeconds - ($now->getTimestamp() - $lastSent->getTimestamp());
+                        $error = 'Please wait another ' . ceil($remaining / 60) . ' minute(s) before requesting a new code.';
+                    } elseif ($lastSent !== null && $now->getTimestamp() - $lastSent->getTimestamp() < $windowSeconds && $resendCount >= $maxResends) {
+                        $error = 'You have reached the maximum number of resend attempts. Please try again in an hour.';
                     } else {
-                        $error = 'Unable to resend the verification code right now. Please try again later.';
+                        $verificationCode = generate_email_verification_code();
+                        $expiresAt = (new DateTime('+1 hour'))->format('Y-m-d H:i:s');
+                        if ($lastSent === null || $now->getTimestamp() - $lastSent->getTimestamp() > $windowSeconds) {
+                            $resendCount = 1;
+                        } else {
+                            $resendCount++;
+                        }
+
+                        $stmt = $pdo->prepare('UPDATE users SET email_verification_code = ?, email_verification_expires_at = ?, email_verification_resend_count = ?, email_verification_last_sent_at = ? WHERE id = ?');
+                        $stmt->execute([$verificationCode, $expiresAt, $resendCount, $now->format('Y-m-d H:i:s'), $user['id']]);
+
+                        if (send_email_verification_code($email, $user['full_name'], $verificationCode)) {
+                            $_SESSION['pending_verify_email'] = $email;
+                            $success = 'A new verification code has been sent to your email address.';
+                        } else {
+                            $error = 'Unable to resend the verification code right now. Please try again later.';
+                        }
                     }
                 }
+            } catch (Throwable $e) {
+                $error = app_exception_message($e, 'We could not resend the verification code right now. Please try again later.');
             }
         }
     } else {
@@ -70,17 +74,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($code === '' || !preg_match('/^[0-9]{6}$/', $code)) {
             $error = 'Please enter the 6-digit verification code.';
         } else {
-            $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ? AND email_verification_code = ? AND email_verification_expires_at > NOW() AND email_verified = 0 LIMIT 1');
-            $stmt->execute([$email, $code]);
-            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+            try {
+                $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ? AND email_verification_code = ? AND email_verification_expires_at > NOW() AND email_verified = 0 LIMIT 1');
+                $stmt->execute([$email, $code]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if ($user) {
-                $stmt = $pdo->prepare('UPDATE users SET email_verified = 1, email_verification_code = NULL, email_verification_expires_at = NULL, email_verification_resend_count = 0, email_verification_last_sent_at = NULL WHERE id = ?');
-                $stmt->execute([$user['id']]);
-                unset($_SESSION['pending_verify_email']);
-                $success = 'Your email address has been verified. You can now log in.';
-            } else {
-                $error = 'The verification code is invalid or has expired. Request a new code if needed.';
+                if ($user) {
+                    $stmt = $pdo->prepare('UPDATE users SET email_verified = 1, email_verification_code = NULL, email_verification_expires_at = NULL, email_verification_resend_count = 0, email_verification_last_sent_at = NULL WHERE id = ?');
+                    $stmt->execute([$user['id']]);
+                    unset($_SESSION['pending_verify_email']);
+                    $success = 'Your email address has been verified. You can now log in.';
+                } else {
+                    $error = 'The verification code is invalid or has expired. Request a new code if needed.';
+                }
+            } catch (Throwable $e) {
+                $error = app_exception_message($e, 'We could not verify your email right now. Please try again later.');
             }
         }
     }

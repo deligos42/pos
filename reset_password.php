@@ -51,12 +51,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $userId !== null) {
     }
 
     if ($error === '') {
-        $hash = password_hash($newPassword, PASSWORD_DEFAULT);
-        $stmt = $pdo->prepare('UPDATE users SET password = ? WHERE id = ?');
-        $stmt->execute([$hash, $userId]);
-        $stmt = $pdo->prepare('DELETE FROM password_resets WHERE user_id = ?');
-        $stmt->execute([$userId]);
-        $success = 'Your password has been reset successfully. You may now <a href="index.php">log in</a>.';
+        try {
+            $hash = password_hash($newPassword, PASSWORD_DEFAULT);
+            $stmt = $pdo->prepare('UPDATE users SET password = ? WHERE id = ?');
+            $stmt->execute([$hash, $userId]);
+            $stmt = $pdo->prepare('DELETE FROM password_resets WHERE user_id = ?');
+            $stmt->execute([$userId]);
+            $success = 'Your password has been reset successfully. You may now <a href="index.php">log in</a>.';
+        } catch (Throwable $e) {
+            $error = app_exception_message($e, 'We could not reset your password right now. Please try again later.');
+        }
     }
 }
 ?>

@@ -99,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (($photo['size'] ?? 0) > 2 * 1024 * 1024) {
             $error = 'Profile photo must be 2 MB or smaller.';
         } else {
-            $image_info = getimagesize($photo['tmp_name']);
+            $image_info = @getimagesize($photo['tmp_name']);
             $mime = $image_info['mime'] ?? '';
 
             if (!isset($allowed_types[$mime])) {
@@ -118,13 +118,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $relative_path = 'assets/profile_photos/' . $filename;
                 $target_path = $upload_dir . '/' . $filename;
 
-                if (move_uploaded_file($photo['tmp_name'], $target_path)) {
+                try {
+                    if (!move_uploaded_file($photo['tmp_name'], $target_path)) {
+                        throw new RuntimeException('The photo could not be saved. Please try again.');
+                    }
+
                     if (!empty($user['profile_photo'])) {
                         $old_path = __DIR__ . '/' . $user['profile_photo'];
                         $old_dir = realpath(dirname($old_path));
                         $profile_dir = realpath($upload_dir);
                         if ($old_dir === $profile_dir && is_file($old_path)) {
-                            unlink($old_path);
+                            @unlink($old_path);
                         }
                     }
 
@@ -132,8 +136,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $stmt->execute([$relative_path, $user_id]);
                     $_SESSION['profile_photo'] = $relative_path;
                     $message = 'Profile photo updated successfully.';
-                } else {
-                    $error = 'Could not save the uploaded photo.';
+                } catch (Throwable $e) {
+                    $error = app_exception_message($e, 'The photo could not be uploaded right now. Please try again.');
                 }
             }
         }

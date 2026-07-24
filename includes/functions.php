@@ -33,6 +33,33 @@ function validate_password_strength(string $password): ?string
     return null;
 }
 
+function app_error_message(string $message, string $fallback = 'Something went wrong. Please try again later.'): string
+{
+    $message = trim($message);
+    if ($message === '') {
+        return $fallback;
+    }
+
+    if (stripos($message, 'duplicate') !== false || stripos($message, 'already exists') !== false || stripos($message, 'already taken') !== false || stripos($message, 'already in use') !== false) {
+        return 'A matching record already exists. Please review the information and try again.';
+    }
+
+    if (stripos($message, 'database') !== false || stripos($message, 'sqlstate') !== false || stripos($message, 'pdoexception') !== false) {
+        return 'We could not complete the request because of a database issue. Please try again later.';
+    }
+
+    if (stripos($message, 'upload') !== false) {
+        return 'The uploaded file could not be processed. Please try another file.';
+    }
+
+    return $message;
+}
+
+function app_exception_message(Throwable $e, string $fallback = 'Something went wrong. Please try again later.'): string
+{
+    return app_error_message($e->getMessage(), $fallback);
+}
+
 function cleanup_stale_unverified_accounts(PDO $pdo, int $days = 7): int
 {
     $stmt = $pdo->prepare(
