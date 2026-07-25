@@ -92,6 +92,7 @@ if (is_array($decoded) && !empty($decoded['items']) && is_array($decoded['items'
         </div>
     </div>
     <a href="admin/receipts.php" class="btn btn-secondary mt-3">Back</a>
+    <a href="admin/download_receipt.php?id=<?= urlencode($rec['id']) ?>" class="btn btn-success mt-3 ms-2" target="_blank">Download PDF</a>
 <?php else: ?>
     <div class="alert alert-warning">Snapshot could not be rendered as a receipt. Showing raw data. Request ID: <?= htmlspecialchars($requestId) ?></div>
     <pre><?= htmlspecialchars(substr($raw, 0, 2000), ENT_QUOTES, 'UTF-8') ?></pre>
