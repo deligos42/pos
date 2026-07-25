@@ -1,13 +1,8 @@
-# Protect admin directory
-<Directory>
-    Options -Indexes
-    
-    # Require authentication for all admin pages
-    # (Session-based auth is enforced by PHP code)
-</Directory>
+# Protect admin directory - keep directory listings off.
+# Session-based authentication is enforced by the PHP application.
+Options -Indexes
 
-# Deny direct access to sensitive files
+# Deny direct access to sensitive files (Apache 2.4+ syntax)
 <FilesMatch "\.(log|sql|db)$">
-    Order Allow,Deny
-    Deny from all
+    Require all denied
 </FilesMatch>
