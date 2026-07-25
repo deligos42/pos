@@ -83,17 +83,17 @@ $content = "0.95 0.98 1 rg\n72 700 468 2 re f\n0.95 0.98 1 rg\n72 425 468 55 re 
 
 if ($hasLogo) {
     $content .= "q /WMLOGO gs\n";
-    $watermarkWidth = 180;
+    $watermarkWidth = 170;
     $watermarkHeight = max(1, round($watermarkWidth * ($logoInfo[1] / $logoInfo[0])));
     $watermarkX = 210;
-    $watermarkY = 300;
-    $content .= "q {$watermarkWidth} 0 0 {$watermarkHeight} {$watermarkX} {$watermarkY} cm /Im1 Do Q\n";
+    $watermarkY = 280;
+    $content .= "q 0.906 0.423 -0.423 0.906 {$watermarkX} {$watermarkY} cm /Im1 Do Q\n";
     $content .= "Q\n";
 
-    $headerLogoWidth = 76;
+    $headerLogoWidth = 70;
     $headerLogoHeight = max(1, round($headerLogoWidth * ($logoInfo[1] / $logoInfo[0])));
-    $headerLogoX = 470;
-    $headerLogoY = 740;
+    $headerLogoX = 520;
+    $headerLogoY = 738;
     $content .= "q {$headerLogoWidth} 0 0 {$headerLogoHeight} {$headerLogoX} {$headerLogoY} cm /Im1 Do Q\n";
 }
 
