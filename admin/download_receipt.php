@@ -69,58 +69,102 @@ function esc_pdf($s) {
     return $s;
 }
 
-// Simple layout values
-$pad = 20;
-$xLeft = $pad;
-$xRight = $pageW - $pad;
-$y = $pageH - 40;
+function pdfText($x, $y, $text, $size = 10, $color = '0 0 0', $font = 'F1') {
+    return sprintf("%s rg\nBT /%s %s Tf %s %s Td (%s) Tj ET\n", $color, $font, $size, $x, $y, esc_pdf($text));
+}
 
-// Background box
-$content .= "0.95 0.98 1 rg\n{$xLeft} " . ($y - 240) . " " . ($xRight - $xLeft) . " 240 re f\n";
+function pdfRightText($x, $y, $text, $size = 10, $color = '0 0 0', $font = 'F1') {
+    $approx = mb_strlen((string)$text, '8bit') * $size * 0.55;
+    return pdfText($x - $approx, $y, $text, $size, $color, $font);
+}
 
-// Logo if available
-$logoObject = 0;
-$objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-];
+function pdfCenteredText($centerX, $y, $text, $size = 10, $color = '0 0 0', $font = 'F1') {
+    $approx = mb_strlen($text, '8bit') * $size * 0.55;
+    return pdfText($centerX - ($approx / 2), $y, $text, $size, $color, $font);
+}
 
+function pdfLine($x1, $y1, $x2, $y2) {
+    return sprintf("0.75 0.75 0.75 RG %s %s m %s %s l S\n", $x1, $y1, $x2, $y2);
+}
+
+function pdfBox($x, $y, $w, $h, $fill) {
+    return sprintf("%s rg %s %s %s %s re f\n", $fill, $x, $y, $w, $h);
+}
+
+function pdfImage($name, $x, $y, $w, $h) {
+    return sprintf("q %s 0 0 %s %s %s cm /%s Do Q\n", $w, $h, $x, $y, $name);
+}
+
+$mm = 72 / 25.4;
+$receiptSize = 80 * $mm;
+$receiptX = ($pageW - $receiptSize) / 2;
+$receiptBottom = $pageH - $receiptSize - 20;
+$centerX = $receiptX + ($receiptSize / 2);
+$textLeft = $receiptX + 10;
+$textRight = $receiptX + $receiptSize - 10;
+
+$content .= pdfBox($receiptX, $receiptBottom, $receiptSize, $receiptSize, '1 1 1');
+
+$y = $pageH - 20;
 if ($logoData && $logoInfo) {
-    $logoObject = 4; // will be index in objects later
+    $logoWpt = 54;
+    $logoHpt = max(12, ($logoInfo[1] / $logoInfo[0]) * $logoWpt);
+    $content .= pdfImage('Im1', $centerX - ($logoWpt / 2), $y - $logoHpt, $logoWpt, $logoHpt);
+    $y -= $logoHpt + 8;
 }
 
-// Add text header
-$content .= "BT /F2 18 Tf {$xLeft} {$y} Td (" . esc_pdf('DELIGOS COMPANY') . ") Tj ET\n";
-$y -= 22;
-$content .= "BT /F1 11 Tf {$xLeft} {$y} Td (Invoice: " . esc_pdf($invoice) . ") Tj ET\n";
-$content .= "BT /F1 11 Tf " . ($xRight - 160) . " {$y} Td (Date: " . esc_pdf($date) . ") Tj ET\n";
-$y -= 18;
-
-// Items header
-$content .= "BT /F2 11 Tf {$xLeft} {$y} Td (Item) Tj ET\n";
-$content .= "BT /F2 11 Tf " . ($xRight - 120) . " {$y} Td (Qty) Tj ET\n";
-$content .= "BT /F2 11 Tf " . ($xRight - 60) . " {$y} Td (Total) Tj ET\n";
-$y -= 14;
-
-// Items rows
-foreach ($items as $it) {
-    $name = esc_pdf($it['name'] ?? '');
-    $qty = (int)($it['qty'] ?? 0);
-    $total = number_format((float)($it['total'] ?? 0), 2);
-    $content .= "BT /F1 10 Tf {$xLeft} {$y} Td ({$name}) Tj ET\n";
-    $content .= "BT /F1 10 Tf " . ($xRight - 120) . " {$y} Td ({$qty}) Tj ET\n";
-    $content .= "BT /F1 10 Tf " . ($xRight - 60) . " {$y} Td (KSh {$total}) Tj ET\n";
-    $y -= 12;
-}
-
-$y -= 8;
-$content .= "BT /F1 10 Tf " . ($xRight - 200) . " {$y} Td (Discount: KSh " . number_format($discount,2) . ") Tj ET\n";
+$content .= pdfCenteredText($centerX, $y, 'DELIGOS COMPANY', 10, '0 0 0', 'F2');
 $y -= 12;
-$content .= "BT /F2 12 Tf " . ($xRight - 200) . " {$y} Td (Grand Total: KSh " . number_format($grand,2) . ") Tj ET\n";
+$content .= pdfCenteredText($centerX, $y, 'Invoice: ' . $invoice, 7);
+$y -= 9;
+$content .= pdfCenteredText($centerX, $y, $date, 7);
+$y -= 9;
+$content .= pdfCenteredText($centerX, $y, 'Cashier: ' . $cashier, 7);
+$y -= 10;
+$content .= pdfLine($textLeft, $y, $textRight, $y);
+$y -= 10;
+
+$content .= pdfText($textLeft, $y, 'Item', 7, '0 0 0', 'F2');
+$content .= pdfText($receiptX + 142, $y, 'Qty', 7, '0 0 0', 'F2');
+    $content .= pdfRightText($receiptX + 174, $y, 'Price', 7, '0 0 0', 'F2');
+    $y -= 8;
+    $content .= pdfLine($textLeft, $y, $textRight, $y);
+    $y -= 9;
+
+    $footerHeight = 42;
+    $rowHeight = 9;
+    $maxRows = max(0, (int)floor(($y - ($receiptBottom + $footerHeight)) / $rowHeight));
+    $visibleItems = array_slice($items, 0, $maxRows);
+
+    foreach ($visibleItems as $it) {
+        $name = esc_pdf($it['name'] ?? '');
+        if (mb_strlen($name, '8bit') > 22) {
+            $name = mb_substr($name, 0, 19, '8bit') . '...';
+        }
+        $qty = (int)($it['qty'] ?? 0);
+        $total = number_format((float)($it['total'] ?? 0), 2);
+        $content .= pdfText($textLeft, $y, $name, 6);
+        $content .= pdfRightText($receiptX + 160, $y, $qty, 6);
+        $content .= pdfRightText($receiptX + 188, $y, 'KSh ' . $total, 6);
+        $y -= $rowHeight;
+    }
+
+    if (count($visibleItems) < count($items)) {
+        $content .= pdfText($textLeft, $y, '+ ' . (count($items) - count($visibleItems)) . ' more item(s)', 6);
+    }
+
+    $y = $receiptBottom + 34;
+    $content .= pdfLine($textLeft, $y, $textRight, $y);
+$y -= 10;
+$content .= pdfText($textLeft, $y, 'Discount: KSh ' . number_format($discount, 2), 7);
+$y -= 10;
+$content .= pdfRightText($textRight, $y, 'Total: KSh ' . number_format($grand, 2), 8, '0 0 0', 'F2');
+$y -= 14;
+$content .= pdfCenteredText($centerX, $y, 'Thank you!', 7);
 
 // Build objects array for PDF
-$objects[] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>';
-$objects[] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>';
+$objects[] = '<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>';
+$objects[] = '<< /Type /Font /Subtype /Type1 /BaseFont /Courier-Bold >>';
 if ($logoData && $logoInfo) {
     $objects[] = '<< /Type /XObject /Subtype /Image /Width ' . $logoInfo[0] . ' /Height ' . $logoInfo[1] . ' /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ' . strlen($logoData) . " >>\nstream\n" . $logoData . "\nendstream";
 }
