@@ -226,19 +226,6 @@ window.showToast = function(message, type = 'info') {
     instance.show();
 };
 
-document.querySelectorAll('.alert').forEach(alertBox => {
-    const message = alertBox.textContent.trim();
-    if (!message) {
-        return;
-    }
-
-    const type = alertBox.classList.contains('alert-success') ? 'success'
-        : alertBox.classList.contains('alert-danger') ? 'error'
-        : alertBox.classList.contains('alert-warning') ? 'warning'
-        : 'info';
-    window.showToast(message, type);
-});
-
 document.querySelectorAll('.password-input').forEach(input => {
     const hint = document.getElementById(input.dataset.hintId);
     if (!hint) {

@@ -72,6 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $userId !== null) {
     <title>Reset Password</title>
     <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 </head>
 <body class="bg-light">
 <div class="container-fluid px-3" style="max-width: 520px; margin-top: min(100px, 12vh);">
@@ -92,12 +93,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $userId !== null) {
                     <input type="hidden" name="token" value="<?= htmlspecialchars($token) ?>">
                     <div class="mb-3">
                         <label for="new_password" class="form-label">New password</label>
-                        <input type="password" id="new_password" name="new_password" class="form-control" required>
+                        <div class="input-group">
+                            <input type="password" id="new_password" name="new_password" class="form-control" required>
+                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="new_password" aria-label="Show password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
                         <div class="invalid-feedback">Enter a new password.</div>
                     </div>
                     <div class="mb-3">
                         <label for="confirm_password" class="form-label">Confirm password</label>
-                        <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
+                        <div class="input-group">
+                            <input type="password" id="confirm_password" name="confirm_password" class="form-control" required>
+                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="confirm_password" aria-label="Show password">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
                         <div class="invalid-feedback">Confirm your new password.</div>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">Set new password</button>
@@ -111,6 +122,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $userId !== null) {
 </div>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+document.querySelectorAll('.toggle-password').forEach(button => {
+    button.addEventListener('click', () => {
+        const input = document.getElementById(button.dataset.target);
+        const icon = button.querySelector('i');
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        icon.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+        button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+    });
+});
+
 (function () {
     'use strict';
     const forms = document.querySelectorAll('.needs-validation');

@@ -88,6 +88,7 @@
                 <li class="nav-item"><a class="nav-link" href="reports.php">Reports</a></li>
                 <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
                 <li class="nav-item"><a class="nav-link" href="profits.php">Profits</a></li>
+                <li class="nav-item"><a class="nav-link" href="commissions.php">Commissions</a></li>
                 <li class="nav-item"><a class="nav-link" href="expenses.php">Expenses</a></li>
                 <li class="nav-item"><a class="nav-link" href="users.php">Users</a></li>
                 <?php endif; ?>

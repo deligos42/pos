@@ -11,7 +11,7 @@ require_once 'config/db.php';
 $error = '';
 $login = '';
 $login_type = 'username';
-$show_verification_resend = false;
+$verification_message = '';
 $verification_resend_email = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     require_post_csrf();
@@ -37,8 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($user && password_verify($password, $user['password'])) {
                 if (empty($user['email_verified'])) {
                     $verification_resend_email = $user['email'] ?? '';
-                    $show_verification_resend = $verification_resend_email !== '';
-                    $error = 'Please verify your email address before logging in. Check your inbox for the OTP.';
+                    $verification_message = $verification_resend_email !== ''
+                        ? 'Your email address is not verified yet. Check your inbox for the 6-digit verification code.'
+                        : 'Your email address is not verified yet. Please contact an administrator to update your account email address.';
                 } else {
                     session_regenerate_id(true);
                     unset($_SESSION[$attemptKey]);
@@ -102,9 +103,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php if ($error): ?>
                 <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
             <?php endif; ?>
-            <?php if ($show_verification_resend && $verification_resend_email): ?>
+            <?php if ($verification_message): ?>
                 <div class="alert alert-warning">
-                    <a href="verify_email.php?email=<?= urlencode($verification_resend_email) ?>" class="text-decoration-none">Resend verification code</a> or complete verification.
+                    <?= htmlspecialchars($verification_message) ?>
+                    <?php if ($verification_resend_email): ?>
+                        <a href="verify_email.php?email=<?= urlencode($verification_resend_email) ?>" class="alert-link">Verify or resend the code</a>.
+                    <?php endif; ?>
                 </div>
             <?php endif; ?>
             <form method="POST" class="needs-validation" novalidate>
@@ -181,19 +185,6 @@ window.showToast = function(message, type = 'info') {
     toast.addEventListener('hidden.bs.toast', () => toast.remove());
     instance.show();
 };
-
-document.querySelectorAll('.alert').forEach(alertBox => {
-    const message = alertBox.textContent.trim();
-    if (!message) {
-        return;
-    }
-
-    const type = alertBox.classList.contains('alert-success') ? 'success'
-        : alertBox.classList.contains('alert-danger') ? 'error'
-        : alertBox.classList.contains('alert-warning') ? 'warning'
-        : 'info';
-    window.showToast(message, type);
-});
 
 const loginTypeRadios = document.querySelectorAll('input[name="login_type"]');
 const loginField = document.getElementById('loginField');
