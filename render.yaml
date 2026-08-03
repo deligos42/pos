@@ -15,3 +15,8 @@ services:
         value: Deligos Company Ltd
       - key: MAIL_DEBUG
         value: false
+      - key: DATABASE_URL
+        fromService:
+          type: psql
+          name: pos-db
+          property: connectionString

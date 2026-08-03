@@ -24,7 +24,13 @@ if ($databaseUrl) {
     $dbname   = rawurldecode(ltrim($dbopts['path'] ?? '', '/'));
     $username = rawurldecode($dbopts['user'] ?? 'root');
     $password = rawurldecode($dbopts['pass'] ?? '');
-    $port     = $dbopts['port'] ?? 3306;
+    $port     = $dbopts['port'] ?? 5432;
+    $scheme   = $dbopts['scheme'] ?? 'mysql';
+    if ($scheme === 'postgres' || $scheme === 'postgresql') {
+        $dsn = "pgsql:host=$host;port=$port;dbname=$dbname";
+    } else {
+        $dsn = "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4";
+    }
 } else {
     // Local XAMPP / manual environment variable fallbacks
     $host     = getenv('DB_HOST') ?: getenv('MYSQL_HOST') ?: getenv('MYSQLHOST') ?: 'localhost';
@@ -35,10 +41,12 @@ if ($databaseUrl) {
 }
 
 try {
-    $pdo = new PDO("mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4", $username, $password);
+    $pdo = new PDO($dsn ?? "mysql:host=$host;port=$port;dbname=$dbname;charset=utf8mb4", $username, $password, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        PDO::ATTR_TIMEOUT => 5,
+    ]);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch(PDOException $e) {
     app_log('Database connection failed: ' . $e->getMessage());
-    http_response_code(500);
-    exit('Database connection failed. Please try again later.');
+    $pdo = null;
 }

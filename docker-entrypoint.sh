@@ -12,4 +12,8 @@ if [ -f /var/www/html/init_render_db.php ]; then
   php /var/www/html/init_render_db.php || true
 fi
 
+if [ ! -d /var/www/html/logs ]; then
+  mkdir -p /var/www/html/logs
+fi
+
 exec apache2-foreground

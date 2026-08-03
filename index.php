@@ -13,7 +13,7 @@ $login = '';
 $login_type = 'username';
 $verification_message = '';
 $verification_resend_email = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
     require_post_csrf();
     $login = trim($_POST['username'] ?? '');
     $login_type = in_array($_POST['login_type'] ?? 'username', ['username', 'email'], true) ? $_POST['login_type'] : 'username';

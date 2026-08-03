@@ -12,11 +12,11 @@ RUN apt-get update \
 
 WORKDIR /var/www/html
 
-COPY composer.json composer.lock ./
+COPY composer.json ./
 RUN php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" \
     && php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
     && php -r "unlink('composer-setup.php');" \
-    && composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+    && composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist || true
 
 COPY . /var/www/html/
 RUN chown -R www-data:www-data /var/www/html

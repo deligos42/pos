@@ -56,7 +56,7 @@ include 'includes/header.php';
                     </tfoot>
                 </table>
 
-                <div class="row mt-3">
+                <div class="row mt-3 g-2">
                     <div class="col-md-6">
                         <select id="customerSelect" class="form-select">
                             <option value="">Walk-in Customer</option>
@@ -68,8 +68,25 @@ include 'includes/header.php';
                         </select>
                     </div>
                     <div class="col-md-6 text-md-end d-flex flex-wrap justify-content-md-end gap-2">
+                        <button class="btn btn-outline-primary" id="validatePhoneBtn" type="button"><i class="bi bi-phone"></i> Validate Phone</button>
                         <button class="btn btn-success" id="completeSaleBtn" type="button"><i class="bi bi-check-circle"></i> Complete Sale</button>
                         <button class="btn btn-danger" id="clearCartBtn" type="button"><i class="bi bi-trash"></i> Clear</button>
+                    </div>
+                </div>
+                <div class="row mt-3 g-2">
+                    <div class="col-md-8">
+                        <input type="tel" id="darajaPhone" class="form-control" placeholder="Mpesa phone number (e.g. 0712345678)">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="number" id="darajaAmount" class="form-control" min="1" step="1" value="1" placeholder="Amount">
+                    </div>
+                </div>
+                <div class="row mt-2 g-2">
+                    <div class="col-md-6">
+                        <button class="btn btn-warning w-100" id="stkPushBtn" type="button"><i class="bi bi-cash"></i> STK Push</button>
+                    </div>
+                    <div class="col-md-6">
+                        <button class="btn btn-info w-100 text-white" id="b2bBtn" type="button"><i class="bi bi-diagram-3"></i> B2B Request</button>
                     </div>
                 </div>
             </div>
@@ -131,6 +148,25 @@ function fmt(n){ return (Number(n) || 0).toFixed(2); }
 function csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content || '';
 }
+
+async function callDaraja(action, payload) {
+    const response = await fetch('ajax/daraja.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken()
+        },
+        body: JSON.stringify({ action, ...payload })
+    });
+
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Daraja request failed.');
+    }
+
+    return data;
+}
+
 function escapeHtml(value) {
     return String(value)
         .replace(/&/g, '&amp;')
@@ -515,6 +551,44 @@ $('#clearCartBtn').on('click', function(){
         lastReceiptData = null;
         $('#discountInput').val(0);
         renderCart();
+    }
+});
+
+$('#validatePhoneBtn').on('click', async function() {
+    try {
+        const phone = $('#darajaPhone').val();
+        const data = await callDaraja('validate_phone', { phone_number: phone });
+        notify(data.message, data.success ? 'success' : 'warning');
+    } catch (error) {
+        notify(error.message, 'danger');
+    }
+});
+
+$('#stkPushBtn').on('click', async function() {
+    try {
+        const phone = $('#darajaPhone').val();
+        const amount = $('#darajaAmount').val();
+        const data = await callDaraja('stk_push', {
+            phone_number: phone,
+            amount,
+            account_reference: invoiceNo
+        });
+        notify(data.message || 'STK push request sent.', data.success ? 'success' : 'warning');
+    } catch (error) {
+        notify(error.message, 'danger');
+    }
+});
+
+$('#b2bBtn').on('click', async function() {
+    try {
+        const amount = $('#darajaAmount').val();
+        const data = await callDaraja('b2b', {
+            amount,
+            account_reference: invoiceNo
+        });
+        notify(data.message || 'B2B request sent.', data.success ? 'success' : 'warning');
+    } catch (error) {
+        notify(error.message, 'danger');
     }
 });
 
