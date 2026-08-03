@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: pos
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: APP_URL
+        value: https://pos-7llo.onrender.com
+      - key: BREVO_FROM_ADDRESS
+        value: support@deligoscompany.online
+      - key: BREVO_FROM_NAME
+        value: Deligos Company Ltd
+      - key: MAIL_DEBUG
+        value: false

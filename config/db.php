@@ -16,8 +16,8 @@ if (file_exists($envFile)) {
     }
 }
 
-// Railway / generic production environment support
-$databaseUrl = getenv('DATABASE_URL') ?: getenv('MYSQL_URL') ?: getenv('RAILWAY_DATABASE_URL');
+// Railway / Render / generic production environment support
+$databaseUrl = getenv('DATABASE_URL') ?: getenv('MYSQL_URL') ?: getenv('RAILWAY_DATABASE_URL') ?: getenv('RENDER_DATABASE_URL');
 if ($databaseUrl) {
     $dbopts = parse_url($databaseUrl);
     $host     = $dbopts['host'] ?? 'localhost';
