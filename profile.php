@@ -329,6 +329,80 @@ include 'includes/header.php';
     </div>
 </div>
 
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-0">Job Tag Cards</h5>
+            <small class="text-muted">Generate a printable job tag for your profile.</small>
+        </div>
+        <div class="btn-group btn-group-sm" role="group">
+            <button id="downloadJobTagBtn" type="button" class="btn btn-primary">
+                <i class="bi bi-download"></i> Download Job Tag
+            </button>
+            <button id="printJobTagBtn" type="button" class="btn btn-outline-secondary">
+                <i class="bi bi-printer"></i> Print
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-12 col-md-6">
+                <div id="jobTagCard" class="border border-2 border-dark rounded-3 p-3 shadow-sm position-relative" style="min-height: 280px; background: linear-gradient(135deg, #e4f0ff 0%, #fff9b6 40%, #dbeeff 100%); overflow: hidden;">
+                    <div class="position-absolute top-50 start-50 translate-middle" style="width: 80%; height: 80%; opacity: 0.18; background: url('assets/DELIGOS%20LOGO.png') center/contain no-repeat; pointer-events: none; z-index: 0;"></div>
+                    <div class="row g-0 h-100" style="position: relative; z-index: 1;">
+                        <div class="col-5 border-end border-secondary ps-4 pe-2">
+                            <div class="text-center mb-3">
+                                <img src="assets/DELIGOS%20LOGO.png" alt="Deligos Company" style="width: 56px; height: auto;">
+                            </div>
+                            <div class="fw-bold text-uppercase small mb-1">Deligos Company</div>
+                            <div class="text-muted small mb-1">P.O. Box 30200</div>
+                            <div class="text-muted small mb-1">Kitale, Kenya</div>
+                            <div class="text-muted small mb-3">0743067646</div>
+                            <div class="text-muted small mb-3">admin123@gmail.com</div>
+                            <div class="fw-semibold small text-uppercase mb-1">Company</div>
+                            <div class="text-muted small">Reliable retail systems for staff and sales.</div>
+                        </div>
+                        <div class="col-7 ps-2 d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="d-flex align-items-center mb-3">
+                                    <div class="flex-shrink-0">
+                                        <?php if (!empty($user['profile_photo'])): ?>
+                                            <img src="<?= htmlspecialchars($user['profile_photo']) ?>" alt="Profile photo" class="rounded-circle" style="width: 72px; height: 72px; object-fit: cover; border: 2px solid #dee2e6;">
+                                        <?php else: ?>
+                                            <div class="rounded-circle bg-secondary-subtle text-secondary d-flex align-items-center justify-content-center" style="width: 72px; height: 72px;">
+                                                <i class="bi bi-person-fill fs-2"></i>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="ms-3">
+                                        <h5 class="mb-1" id="jobTagName"><?= htmlspecialchars($user['full_name']) ?></h5>
+                                        <div class="text-muted" id="jobTagRole"><?= htmlspecialchars(ucfirst($user['role'])) ?></div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="fw-semibold mb-1 small text-uppercase text-secondary">Contact</div>
+                                    <div id="jobTagPhone"><?= htmlspecialchars($user['phone'] ?? 'N/A') ?></div>
+                                    <div id="jobTagEmail"><?= htmlspecialchars($user['email'] ?? 'N/A') ?></div>
+                                </div>
+                                <div class="mb-3">
+                                    <div class="fw-semibold mb-1 small text-uppercase text-secondary">ID Number</div>
+                                    <div id="jobTagIdNumber"><?= htmlspecialchars($user['id_number'] ?? 'N/A') ?></div>
+                                </div>
+                            </div>
+                            <div class="pt-2 border-top border-secondary">
+                                <div class="fw-semibold mb-1 small text-uppercase text-secondary">Member Since</div>
+                                <div id="jobTagMemberSince"><?= htmlspecialchars(date('d M Y', strtotime($user['created_at']))) ?></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <p class="text-muted small mt-3 mb-0">Use the download button to save a PNG job tag that can be printed for staff identification.</p>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 document.querySelectorAll('.password-input').forEach(input => {
     const hint = document.getElementById(input.dataset.hintId);
@@ -408,5 +482,71 @@ document.querySelectorAll('.toggle-password').forEach(button => {
         button.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
     });
 });
+
+const jobTagCard = document.getElementById('jobTagCard');
+const downloadJobTagBtn = document.getElementById('downloadJobTagBtn');
+const printJobTagBtn = document.getElementById('printJobTagBtn');
+
+if (downloadJobTagBtn && jobTagCard) {
+    downloadJobTagBtn.addEventListener('click', async () => {
+        downloadJobTagBtn.disabled = true;
+        downloadJobTagBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Generating...';
+        try {
+            const canvas = await html2canvas(jobTagCard, {
+                backgroundColor: '#ffffff',
+                scale: window.devicePixelRatio || 2,
+            });
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = 'jobtag-<?= preg_replace('/[^a-z0-9]+/i', '-', strtolower($user['username'])) ?: 'jobtag' ?>.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error(error);
+            alert('Unable to generate job tag image. Please try again.');
+        } finally {
+            downloadJobTagBtn.disabled = false;
+            downloadJobTagBtn.innerHTML = '<i class="bi bi-download"></i> Download Job Tag';
+        }
+    });
+}
+
+if (printJobTagBtn && jobTagCard) {
+    printJobTagBtn.addEventListener('click', async () => {
+        try {
+            const canvas = await html2canvas(jobTagCard, {
+                backgroundColor: '#ffffff',
+                scale: window.devicePixelRatio || 2,
+            });
+            const dataUrl = canvas.toDataURL('image/png');
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                alert('Unable to open print window. Please allow popups for this site.');
+                return;
+            }
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Print Job Tag</title>
+                        <style>
+                            body { margin: 0; padding: 24px; font-family: Arial, sans-serif; }
+                            img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+                        </style>
+                    </head>
+                    <body>
+                        <img src="${dataUrl}" alt="Job Tag">
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+        } catch (error) {
+            console.error(error);
+            alert('Unable to print job tag. Please try again.');
+        }
+    });
+}
 </script>
 <?php include 'includes/footer.php'; ?>

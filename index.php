@@ -8,6 +8,17 @@ if (isset($_SESSION['user_id'])) {
 }
 require_once 'config/db.php';
 
+if ($pdo) {
+    try {
+        $columnCheck = $pdo->query("SHOW COLUMNS FROM users LIKE 'last_login'")->fetch();
+        if (!$columnCheck) {
+            $pdo->exec("ALTER TABLE users ADD COLUMN last_login DATETIME NULL AFTER email");
+        }
+    } catch (Throwable $e) {
+        // If schema migration fails, continue without blocking login.
+    }
+}
+
 $error = '';
 $login = '';
 $login_type = 'username';
@@ -41,6 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
                         ? 'Your email address is not verified yet. Check your inbox for the 6-digit verification code.'
                         : 'Your email address is not verified yet. Please contact an administrator to update your account email address.';
                 } else {
+                    $previousLogin = !empty($user['last_login']) ? $user['last_login'] : null;
+                    try {
+                        $updateStmt = $pdo->prepare('UPDATE users SET last_login = NOW() WHERE id = ?');
+                        $updateStmt->execute([$user['id']]);
+                    } catch (Throwable $e) {
+                        // ignore update failures
+                    }
+
                     session_regenerate_id(true);
                     unset($_SESSION[$attemptKey]);
                     $_SESSION['user_id'] = $user['id'];
@@ -48,6 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $pdo) {
                     $_SESSION['full_name'] = $user['full_name'];
                     $_SESSION['role'] = $user['role'];
                     $_SESSION['profile_photo'] = $user['profile_photo'] ?? null;
+                    $_SESSION['last_login'] = $previousLogin ? date('Y-m-d H:i:s', strtotime($previousLogin)) : 'First login';
                     csrf_token();
                     header('Location: dashboard.php');
                     exit;

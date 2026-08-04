@@ -19,6 +19,23 @@
         .navbar-brand { display: flex; align-items: center; gap: 8px; }
         .navbar-logo { width: 32px; height: 32px; object-fit: contain; background: #fff; border-radius: 4px; padding: 2px; }
         .navbar-profile-photo { width: 26px; height: 26px; object-fit: cover; border-radius: 50%; border: 1px solid rgba(255,255,255,.6); }
+        .app-layout { display: flex; min-height: calc(100vh - 56px); }
+        .sidebar { width: 260px; background: #1f2937; color: #fff; position: fixed; top: 56px; bottom: 0; left: 0; padding: 1rem 0; overflow-y: auto; }
+        .sidebar-brand { padding: 0 1.25rem; margin-bottom: 1.25rem; font-size: 0.95rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .sidebar .nav-link { color: rgba(255,255,255,.85); padding: 0.75rem 1.25rem; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active { color: #fff; background: rgba(255,255,255,.08); }
+        .sidebar-footer { padding: 1rem 1.25rem; border-top: 1px solid rgba(255,255,255,.08); margin-top: 1rem; }
+        .main-content { margin-left: 260px; width: calc(100% - 260px); padding-top: 1rem; }
+        .topbar { background: #fff; border-bottom: 1px solid #e9ecef; padding: 0.85rem 1rem; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; position: sticky; top: 56px; z-index: 1000; }
+        .topbar-info { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .topbar-profile { display: flex; align-items: center; gap: 0.75rem; }
+        .profile-thumb { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; border: 1px solid #dee2e6; }
+        .profile-thumb-icon { width: 42px; height: 42px; border-radius: 50%; background: #6c757d; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+        .sidebar .nav-link .bi { margin-right: 0.5rem; }
+        @media (max-width: 991.98px) {
+            .sidebar { display: none; }
+            .main-content { margin-left: 0; width: 100%; }
+        }
         .app-shell {
             width: 100%;
             max-width: 100%;
@@ -73,37 +90,61 @@
 </head>
 <body>
 <div class="toast-container position-fixed top-0 end-0 p-3 app-toast-container" id="appToastContainer"></div>
-<nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+<nav class="navbar navbar-dark fixed-top">
     <div class="container-fluid">
         <a class="navbar-brand" href="dashboard.php"><img src="assets/DELIGOS%20LOGO.png" class="navbar-logo" alt="Deligos Company"> POS</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav me-auto">
-                <li class="nav-item"><a class="nav-link" href="dashboard.php">Dashboard</a></li>
-                <li class="nav-item"><a class="nav-link" href="sales.php">Sales</a></li>
-                <li class="nav-item"><a class="nav-link" href="inventory.php">Inventory</a></li>
-                <li class="nav-item"><a class="nav-link" href="customers.php">Customers</a></li>
-                <li class="nav-item"><a class="nav-link" href="reports.php">Reports</a></li>
-                <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
-                <li class="nav-item"><a class="nav-link" href="profits.php">Profits</a></li>
-                <li class="nav-item"><a class="nav-link" href="commissions.php">Commissions</a></li>
-                <li class="nav-item"><a class="nav-link" href="expenses.php">Expenses</a></li>
-                <li class="nav-item"><a class="nav-link" href="users.php">Users</a></li>
-                <?php endif; ?>
-            </ul>
-            <span class="navbar-text text-white me-3">
-                <?php if (!empty($_SESSION['profile_photo'])): ?>
-                    <img src="<?= htmlspecialchars($_SESSION['profile_photo']) ?>" class="navbar-profile-photo me-1" alt="Profile photo">
-                <?php else: ?>
-                    <i class="bi bi-person-circle"></i>
-                <?php endif; ?>
-                <?= htmlspecialchars($_SESSION['full_name'] ?? '') ?> (<?= htmlspecialchars($_SESSION['role'] ?? '') ?>)
-            </span>
-            <a href="profile.php" class="btn btn-outline-light btn-sm me-2"><i class="bi bi-gear"></i> Profile</a>
-            <a href="logout.php" class="btn btn-outline-light btn-sm">Logout</a>
-        </div>
     </div>
 </nav>
-<div class="container-fluid app-shell">
+<div class="app-layout">
+    <aside class="sidebar">
+        <div class="sidebar-brand">Deligos POS</div>
+        <nav class="nav flex-column">
+            <a class="nav-link" href="dashboard.php"><i class="bi bi-speedometer2"></i> Dashboard</a>
+            <a class="nav-link" href="sales.php"><i class="bi bi-basket3"></i> Sales</a>
+            <a class="nav-link" href="inventory.php"><i class="bi bi-box-seam"></i> Inventory</a>
+            <a class="nav-link" href="customers.php"><i class="bi bi-people"></i> Customers</a>
+            <a class="nav-link" href="reports.php"><i class="bi bi-bar-chart-line"></i> Reports</a>
+            <?php if (($_SESSION['role'] ?? '') === 'admin'): ?>
+            <a class="nav-link" href="profits.php"><i class="bi bi-currency-dollar"></i> Profits</a>
+            <a class="nav-link" href="commissions.php"><i class="bi bi-cash-stack"></i> Commissions</a>
+            <a class="nav-link" href="expenses.php"><i class="bi bi-wallet2"></i> Expenses</a>
+            <a class="nav-link" href="users.php"><i class="bi bi-people-fill"></i> Users</a>
+            <?php endif; ?>
+        </nav>
+        <div class="sidebar-footer">
+            <a class="nav-link" href="profile.php"><i class="bi bi-person-circle"></i> Profile</a>
+            <a class="nav-link" href="logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a>
+        </div>
+    </aside>
+    <div class="main-content">
+        <div class="topbar">
+            <div class="topbar-info">
+                <div>
+                    <div class="text-muted small">Welcome back</div>
+                    <strong><?= htmlspecialchars($_SESSION['full_name'] ?? '') ?></strong>
+                </div>
+            </div>
+            <div class="topbar-profile">
+                <?php
+                    $lastLoginText = 'Unknown';
+                    if (!empty($_SESSION['last_login'])) {
+                        $lastLoginRaw = $_SESSION['last_login'];
+                        $dateTime = DateTime::createFromFormat('Y-m-d H:i:s', $lastLoginRaw);
+                        if (!$dateTime) {
+                            $dateTime = date_create($lastLoginRaw);
+                        }
+                        $lastLoginText = $dateTime ? $dateTime->format('F j, Y H:i') : $lastLoginRaw;
+                    }
+                ?>
+                <div>
+                    <div class="text-muted small">Last login</div>
+                    <strong><?= htmlspecialchars($lastLoginText) ?></strong>
+                </div>
+                <?php if (!empty($_SESSION['profile_photo'])): ?>
+                    <img src="<?= htmlspecialchars($_SESSION['profile_photo']) ?>" class="profile-thumb" alt="Profile photo">
+                <?php else: ?>
+                    <span class="profile-thumb-icon"><i class="bi bi-person-fill"></i></span>
+                <?php endif; ?>
+            </div>
+        </div>
+        <div class="container-fluid app-shell">

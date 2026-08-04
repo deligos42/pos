@@ -17,10 +17,18 @@ $low_stock = $stmt->fetchColumn();
 
 include 'includes/header.php';
 ?>
+<style>
+@media (max-width: 575.98px) {
+    .dashboard-summary-card { margin-bottom: 0.6rem !important; }
+    .dashboard-summary-card .card-body { padding: 0.75rem !important; }
+    .dashboard-summary-card .card-title { font-size: 1rem !important; margin-bottom: 0.3rem !important; }
+    .dashboard-summary-card .display-6 { font-size: 2rem !important; }
+}
+</style>
 <h2>Dashboard</h2>
 <div class="row mt-4">
     <div class="col-md-3">
-        <div class="card text-white bg-primary mb-3">
+        <div class="card dashboard-summary-card text-white bg-primary mb-3">
             <div class="card-body">
                 <h5 class="card-title">Today's Sales</h5>
                 <p class="card-text display-6"><?= htmlspecialchars((string)($today_stats['total_sales'] ?? 0)) ?></p>
@@ -28,7 +36,7 @@ include 'includes/header.php';
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-white bg-success mb-3">
+        <div class="card dashboard-summary-card text-white bg-success mb-3">
             <div class="card-body">
                 <h5 class="card-title">Revenue (Today)</h5>
                 <p class="card-text display-6">KSh <?= number_format($today_stats['revenue'] ?? 0, 2) ?></p>
@@ -36,7 +44,7 @@ include 'includes/header.php';
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-white bg-warning mb-3">
+        <div class="card dashboard-summary-card text-white bg-warning mb-3">
             <div class="card-body">
                 <h5 class="card-title">Total Products</h5>
                 <p class="card-text display-6"><?= htmlspecialchars((string)$total_products) ?></p>
@@ -44,7 +52,7 @@ include 'includes/header.php';
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-white bg-danger mb-3">
+        <div class="card dashboard-summary-card text-white bg-danger mb-3">
             <div class="card-body">
                 <h5 class="card-title">Low Stock Items</h5>
                 <p class="card-text display-6"><?= htmlspecialchars((string)$low_stock) ?></p>
