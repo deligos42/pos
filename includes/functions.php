@@ -330,6 +330,13 @@ function store_receipt_snapshot(int $sale_id, array $snapshot)
     try {
         global $pdo;
         if (!$pdo) return false;
+
+        $tableExists = $pdo->query("SHOW TABLES LIKE 'receipts'")->fetch();
+        if (!$tableExists) {
+            app_log('store_receipt_snapshot skipped: receipts table does not exist');
+            return false;
+        }
+
         $user_id = $_SESSION['user_id'] ?? null;
         $stmt = $pdo->prepare("INSERT INTO receipts (sale_id, snapshot, created_by) VALUES (?, ?, ?)");
         $stmt->execute([$sale_id, json_encode($snapshot), $user_id]);

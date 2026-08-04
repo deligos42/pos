@@ -22,9 +22,9 @@ function get_lipana_config(): array
         $baseUrl .= '/v1';
     }
 
-    $endpoint = (string)(getenv('LIPANA_PAYMENT_ENDPOINT') ?: '/stk-push');
-    if ($endpoint === '/v1/stkpush') {
-        $endpoint = '/stk-push';
+    $endpoint = (string)(getenv('LIPANA_PAYMENT_ENDPOINT') ?: '/transactions/push-stk');
+    if ($endpoint === '/v1/stkpush' || $endpoint === '/stk-push') {
+        $endpoint = '/transactions/push-stk';
     }
 
     return [
@@ -99,7 +99,7 @@ function lipana_stk_push(array $payload): array
     $ch = curl_init($url);
     curl_setopt_array($ch, [
         CURLOPT_HTTPHEADER => [
-        'Authorization: Bearer ' . $config['api_key'],
+        'x-api-key: ' . $config['api_key'],
         'Content-Type: application/json',
         'Accept: application/json',
         ],
