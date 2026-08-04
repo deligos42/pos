@@ -84,6 +84,9 @@ if (is_array($decoded) && !empty($decoded['items']) && is_array($decoded['items'
                 <div style="min-width:220px;text-align:right;">
                     <div>Subtotal: <strong>KSh <?= htmlspecialchars(number_format((float)($decoded['total_amount'] ?? $decoded['grand_total'] ?? 0), 2)) ?></strong></div>
                     <div>Discount: <?= htmlspecialchars(number_format((float)($decoded['discount'] ?? 0), 2)) ?></div>
+                    <?php if (!empty($decoded['mpesa_code'])): ?>
+                        <div>MPESA Code: <strong><?= htmlspecialchars($decoded['mpesa_code']) ?></strong></div>
+                    <?php endif; ?>
                     <div class="mt-2"><strong>Grand Total: KSh <?= htmlspecialchars(number_format((float)($decoded['grand_total'] ?? $decoded['total_amount'] ?? 0), 2)) ?></strong></div>
                 </div>
             </div>

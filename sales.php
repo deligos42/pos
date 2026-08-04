@@ -79,16 +79,41 @@ include 'includes/header.php';
                         <button class="btn btn-danger" id="clearCartBtn" type="button"><i class="bi bi-trash"></i> Clear</button>
                     </div>
                 </div>
-                <div class="row mt-3 g-2">
-                    <div class="col-md-7">
-                        <input type="tel" id="lipanaPhone" class="form-control" placeholder="Phone number (e.g. 0712345678)">
-                    </div>
-                    <div class="col-md-5">
-                        <input type="number" id="lipanaAmount" class="form-control" min="1" step="1" value="1" placeholder="Amount">
-                    </div>
-                </div>
             </div>
         </div>
+    </div>
+
+    <div class="modal fade" id="lipanaModal" tabindex="-1" aria-labelledby="lipanaModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="lipanaModalLabel">Lipana Payment</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Invoice</label>
+              <div id="lipanaInvoiceDisplay" class="form-control-plaintext">&nbsp;</div>
+            </div>
+            <div class="mb-3">
+              <label for="lipanaPhone" class="form-label">Phone Number</label>
+              <input type="tel" id="lipanaPhone" class="form-control" placeholder="Phone number (e.g. 0712345678)">
+            </div>
+            <div class="mb-3">
+              <label for="lipanaAmount" class="form-label">Amount</label>
+              <input type="number" id="lipanaAmount" class="form-control" min="1" step="1" readonly>
+            </div>
+            <div class="mb-3">
+              <label for="lipanaCode" class="form-label">MPESA Code</label>
+              <input type="text" id="lipanaCode" class="form-control" placeholder="Enter MPESA code">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirmLipanaBtn">Send Lipana Request</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="col-lg-5">
@@ -112,6 +137,7 @@ include 'includes/header.php';
                 <hr>
                 <p>Discount: KSh <span id="receiptDiscount">0.00</span></p>
                 <p><strong>Total: KSh <span id="receiptTotal">0.00</span></strong></p>
+                <p id="receiptMpesaCode" style="display:none;">MPESA Code: <strong><span id="receiptMpesaCodeValue"></span></strong></p>
                 <p><small>Thank you!</small></p>
             </div>
             <div class="card-footer">
@@ -175,6 +201,7 @@ function getReceiptData() {
         cashier: $('#receiptCashier').text().trim(),
         discount,
         total,
+        mpesa_code: $('#lipanaCode').val().trim() || null,
         items: cart.map(item => ({
             name: item.name,
             qty: item.qty,
@@ -189,6 +216,14 @@ function renderReceiptData(data) {
     $('#receiptCashier').text(data.cashier);
     $('#receiptDiscount').text(fmt(data.discount));
     $('#receiptTotal').text(fmt(data.total));
+
+    if (data.mpesa_code) {
+        $('#receiptMpesaCodeValue').text(data.mpesa_code);
+        $('#receiptMpesaCode').show();
+    } else {
+        $('#receiptMpesaCodeValue').text('');
+        $('#receiptMpesaCode').hide();
+    }
 
     let receiptItems = $('#receiptItems');
     receiptItems.empty();
@@ -325,6 +360,10 @@ async function makeReceiptPdf(data) {
     y -= 10;
     content += pdfText(textLeft, y, `Discount: KSh ${fmt(data.discount)}`, 7);
     y -= 10;
+    if (data.mpesa_code) {
+        content += pdfText(textLeft, y, `MPESA Code: ${data.mpesa_code}`, 7);
+        y -= 10;
+    }
     content += pdfText(textLeft, y, `Total: KSh ${fmt(data.total)}`, 8, '0 0 0', 'F2');
     y -= 14;
     content += pdfText(textLeft, y, 'Thank you!', 7);
@@ -420,6 +459,7 @@ function updateTotals() {
     $('#grandTotal').text(fmt(grand));
     $('#receiptTotal').text(fmt(grand));
     $('#receiptDiscount').text(fmt(discount));
+    $('#lipanaAmount').val(fmt(grand));
 }
 
 function renderCart() {
@@ -535,9 +575,51 @@ $('#clearCartBtn').on('click', function(){
     }
 });
 
+function showLipanaModal() {
+    const grand = parseFloat($('#grandTotal').text()) || 0;
+    $('#lipanaAmount').val(fmt(grand));
+    $('#lipanaInvoiceDisplay').text(invoiceNo);
+
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const lipanaModalEl = document.getElementById('lipanaModal');
+        const lipanaModal = bootstrap.Modal.getOrCreateInstance(lipanaModalEl);
+        lipanaModal.show();
+    } else {
+        $('#lipanaModal').show();
+    }
+}
+
+function updateLipanaFields() {
+    const isLipana = $('#paymentMethodSelect').val() === 'Lipana';
+    $('#initiateLipanaBtn').toggle(isLipana);
+    if (!isLipana) {
+        $('#lipanaPhone').val('');
+        $('#lipanaCode').val('');
+        lipanaRequest = null;
+    }
+}
+
+$('#paymentMethodSelect').on('change', updateLipanaFields);
 $('#discountInput').on('input', updateTotals);
 $('#printReceiptBtn').on('click', printReceiptOnly);
 $('#downloadReceiptBtn').on('click', downloadReceiptPdf);
+$('#confirmLipanaBtn').on('click', async function() {
+    try {
+        const data = await initiateLipanaPayment();
+        notify(data.message || 'Payment request sent.', 'success');
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const lipanaModalEl = document.getElementById('lipanaModal');
+            const lipanaModal = bootstrap.Modal.getOrCreateInstance(lipanaModalEl);
+            lipanaModal.hide();
+        } else {
+            $('#lipanaModal').hide();
+        }
+    } catch (error) {
+        notify(error.message, 'danger');
+    }
+});
+
+updateLipanaFields();
 
 async function initiateLipanaPayment() {
     const phone = $('#lipanaPhone').val();
@@ -577,13 +659,7 @@ $('#initiateLipanaBtn').on('click', async function() {
         notify('Cart is empty!', 'warning');
         return;
     }
-
-    try {
-        const data = await initiateLipanaPayment();
-        notify(data.message || 'Payment request sent.', 'success');
-    } catch (error) {
-        notify(error.message, 'danger');
-    }
+    showLipanaModal();
 });
 
 // Complete Sale
@@ -608,6 +684,7 @@ $('#completeSaleBtn').on('click', async function() {
         discount: discount,
         grand_total: grand_total,
         payment_method: payment_method,
+        mpesa_code: $('#lipanaCode').val().trim() || null,
         items: cart.map(item => ({ product_id: item.id, qty: item.qty, unit_price: item.price }))
     };
 
@@ -629,6 +706,7 @@ $('#completeSaleBtn').on('click', async function() {
                 $('#receiptInvoice').text(invoiceNo);
                 renderCart();
                 $('#discountInput').val(0);
+                $('#lipanaCode').val('');
                 $('#customerSelect').val('');
                 updateTotals();
                 renderReceiptData(lastReceiptData);

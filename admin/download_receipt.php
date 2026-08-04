@@ -45,6 +45,7 @@ $date = $decoded['created_at'] ?? $decoded['date'] ?? $rec['created_at'] ?? date
 $cashier = $decoded['cashier'] ?? $_SESSION['full_name'] ?? '';
 $discount = (float)($decoded['discount'] ?? 0);
 $grand = (float)($decoded['grand_total'] ?? $decoded['total_amount'] ?? 0);
+$mpesaCode = trim((string)($decoded['mpesa_code'] ?? ''));
 
 // Load logo (prefer jpg then png)
 $logoPathJ = __DIR__ . '/../assets/DELIGOS LOGO.jpg';
@@ -158,8 +159,10 @@ $content .= pdfText($receiptX + 142, $y, 'Qty', 7, '0 0 0', 'F2');
 $y -= 10;
 $content .= pdfText($textLeft, $y, 'Discount: KSh ' . number_format($discount, 2), 7);
 $y -= 10;
-$content .= pdfRightText($textRight, $y, 'Total: KSh ' . number_format($grand, 2), 8, '0 0 0', 'F2');
-$y -= 14;
+    if ($mpesaCode !== '') {
+        $content .= pdfText($textLeft, $y, 'MPESA Code: ' . $mpesaCode, 7);
+        $y -= 10;
+    }
 $content .= pdfCenteredText($centerX, $y, 'Thank you!', 7);
 
 // Build objects array for PDF

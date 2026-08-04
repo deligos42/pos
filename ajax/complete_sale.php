@@ -137,6 +137,8 @@ try {
             'invoice_no' => $invoice_no,
             'user_id' => $user_id,
             'customer_id' => $customer_id,
+            'payment_method' => $payment_method,
+            'mpesa_code' => isset($data['mpesa_code']) ? trim((string)$data['mpesa_code']) : null,
             'items' => array_map(function($it){
                 return [
                     'name' => $it['product_name'],
