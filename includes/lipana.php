@@ -124,11 +124,27 @@ function lipana_stk_push(array $payload): array
 
     $payloadResponse = json_decode($response, true);
     $success = $httpCode < 400 && (!is_array($payloadResponse) || empty($payloadResponse['error']));
+    $providerMessage = '';
+    if (is_array($payloadResponse)) {
+        $providerMessage = (string)($payloadResponse['message'] ?? $payloadResponse['detail'] ?? '');
+        if ($providerMessage === '' && is_string($payloadResponse['error'] ?? null)) {
+            $providerMessage = $payloadResponse['error'];
+        }
+        if ($providerMessage === '' && isset($payloadResponse['error']['message'])) {
+            $providerMessage = (string)$payloadResponse['error']['message'];
+        }
+    }
+
+    if (!$success) {
+        error_log('Lipana STK response: HTTP ' . $httpCode . ' ' . substr($response, 0, 2000));
+    }
 
     return [
         'success' => $success,
         'http_code' => $httpCode,
         'response' => $payloadResponse,
-        'message' => $success ? 'Payment request sent to Lipana.' : 'Lipana payment request failed.',
+        'message' => $success
+            ? 'Payment request sent to Lipana.'
+            : ($providerMessage !== '' ? 'Lipana: ' . $providerMessage : 'Lipana payment request failed.'),
     ];
 }
