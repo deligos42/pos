@@ -34,6 +34,9 @@ $discount = validate_decimal($data['discount'] ?? 0, 0);
 if ($discount === null) {
     $discount = 0;
 }
+$payment_method = in_array((string)($data['payment_method'] ?? 'Cash'), ['Cash', 'Lipana'], true)
+    ? (string)($data['payment_method'] ?? 'Cash')
+    : 'Cash';
 $user_id = $_SESSION['user_id'];
 
 $total_amount = 0;
@@ -100,8 +103,8 @@ try {
     $grand_total = $total_amount - $discount;
 
     $stmt = $pdo->prepare("INSERT INTO sales (invoice_no, user_id, customer_id, total_amount, discount, grand_total, payment_method)
-                            VALUES (?, ?, ?, ?, ?, ?, 'Cash')");
-    $stmt->execute([$invoice_no, $user_id, $customer_id, $total_amount, $discount, $grand_total]);
+                            VALUES (?, ?, ?, ?, ?, ?, ?)");
+    $stmt->execute([$invoice_no, $user_id, $customer_id, $total_amount, $discount, $grand_total, $payment_method]);
     $sale_id = $pdo->lastInsertId();
 
     foreach ($saleItems as $item) {

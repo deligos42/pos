@@ -57,7 +57,7 @@ include 'includes/header.php';
                 </table>
 
                 <div class="row mt-3 g-2">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <select id="customerSelect" class="form-select">
                             <option value="">Walk-in Customer</option>
                             <?php foreach ($customers as $c): ?>
@@ -67,26 +67,24 @@ include 'includes/header.php';
                             <?php endforeach; ?>
                         </select>
                     </div>
+                    <div class="col-md-2">
+                        <select id="paymentMethodSelect" class="form-select">
+                            <option value="Cash">Cash</option>
+                            <option value="Lipana">Lipana</option>
+                        </select>
+                    </div>
                     <div class="col-md-6 text-md-end d-flex flex-wrap justify-content-md-end gap-2">
-                        <button class="btn btn-outline-primary" id="validatePhoneBtn" type="button"><i class="bi bi-phone"></i> Validate Phone</button>
+                        <button class="btn btn-outline-primary" id="initiateLipanaBtn" type="button"><i class="bi bi-phone"></i> Pay with Lipana</button>
                         <button class="btn btn-success" id="completeSaleBtn" type="button"><i class="bi bi-check-circle"></i> Complete Sale</button>
                         <button class="btn btn-danger" id="clearCartBtn" type="button"><i class="bi bi-trash"></i> Clear</button>
                     </div>
                 </div>
                 <div class="row mt-3 g-2">
-                    <div class="col-md-8">
-                        <input type="tel" id="darajaPhone" class="form-control" placeholder="Mpesa phone number (e.g. 0712345678)">
+                    <div class="col-md-7">
+                        <input type="tel" id="lipanaPhone" class="form-control" placeholder="Phone number (e.g. 0712345678)">
                     </div>
-                    <div class="col-md-4">
-                        <input type="number" id="darajaAmount" class="form-control" min="1" step="1" value="1" placeholder="Amount">
-                    </div>
-                </div>
-                <div class="row mt-2 g-2">
-                    <div class="col-md-6">
-                        <button class="btn btn-warning w-100" id="stkPushBtn" type="button"><i class="bi bi-cash"></i> STK Push</button>
-                    </div>
-                    <div class="col-md-6">
-                        <button class="btn btn-info w-100 text-white" id="b2bBtn" type="button"><i class="bi bi-diagram-3"></i> B2B Request</button>
+                    <div class="col-md-5">
+                        <input type="number" id="lipanaAmount" class="form-control" min="1" step="1" value="1" placeholder="Amount">
                     </div>
                 </div>
             </div>
@@ -129,6 +127,7 @@ include 'includes/header.php';
 let cart = [];
 let invoiceNo = document.getElementById('invoiceDisplay').textContent;
 let lastReceiptData = null;
+let lipanaRequest = null;
 
 function notify(message, type = 'info') {
     if (typeof window.showToast === 'function') {
@@ -147,24 +146,6 @@ function generateInvoiceNo() {
 function fmt(n){ return (Number(n) || 0).toFixed(2); }
 function csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content || '';
-}
-
-async function callDaraja(action, payload) {
-    const response = await fetch('ajax/daraja.php', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken()
-        },
-        body: JSON.stringify({ action, ...payload })
-    });
-
-    const data = await response.json();
-    if (!response.ok || !data.success) {
-        throw new Error(data.message || 'Daraja request failed.');
-    }
-
-    return data;
 }
 
 function escapeHtml(value) {
@@ -554,61 +535,79 @@ $('#clearCartBtn').on('click', function(){
     }
 });
 
-$('#validatePhoneBtn').on('click', async function() {
-    try {
-        const phone = $('#darajaPhone').val();
-        const data = await callDaraja('validate_phone', { phone_number: phone });
-        notify(data.message, data.success ? 'success' : 'warning');
-    } catch (error) {
-        notify(error.message, 'danger');
-    }
-});
-
-$('#stkPushBtn').on('click', async function() {
-    try {
-        const phone = $('#darajaPhone').val();
-        const amount = $('#darajaAmount').val();
-        const data = await callDaraja('stk_push', {
-            phone_number: phone,
-            amount,
-            account_reference: invoiceNo
-        });
-        notify(data.message || 'STK push request sent.', data.success ? 'success' : 'warning');
-    } catch (error) {
-        notify(error.message, 'danger');
-    }
-});
-
-$('#b2bBtn').on('click', async function() {
-    try {
-        const amount = $('#darajaAmount').val();
-        const data = await callDaraja('b2b', {
-            amount,
-            account_reference: invoiceNo
-        });
-        notify(data.message || 'B2B request sent.', data.success ? 'success' : 'warning');
-    } catch (error) {
-        notify(error.message, 'danger');
-    }
-});
-
 $('#discountInput').on('input', updateTotals);
 $('#printReceiptBtn').on('click', printReceiptOnly);
 $('#downloadReceiptBtn').on('click', downloadReceiptPdf);
 
+async function initiateLipanaPayment() {
+    const phone = $('#lipanaPhone').val();
+    const amount = Number($('#lipanaAmount').val() || $('#grandTotal').text());
+    if (!phone) {
+        throw new Error('Enter a phone number for Lipana payment.');
+    }
+    if (!Number.isFinite(amount) || amount < 1) {
+        throw new Error('Enter a valid Lipana payment amount.');
+    }
+
+    const response = await fetch('ajax/lipana.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken()
+        },
+        body: JSON.stringify({
+            action: 'initiate_payment',
+            phone_number: phone,
+            amount,
+            account_reference: invoiceNo,
+            transaction_desc: 'POS payment ' + invoiceNo
+        })
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Lipana request failed.');
+    }
+
+    lipanaRequest = { invoiceNo, amount };
+    return data;
+}
+
+$('#initiateLipanaBtn').on('click', async function() {
+    if (cart.length === 0) {
+        notify('Cart is empty!', 'warning');
+        return;
+    }
+
+    try {
+        const data = await initiateLipanaPayment();
+        notify(data.message || 'Payment request sent.', 'success');
+    } catch (error) {
+        notify(error.message, 'danger');
+    }
+});
+
 // Complete Sale
-$('#completeSaleBtn').on('click', function() {
+$('#completeSaleBtn').on('click', async function() {
     if (cart.length === 0) { notify('Cart is empty!', 'warning'); return; }
 
     let customer_id = $('#customerSelect').val() || null;
     let discount = parseFloat($('#discountInput').val()) || 0;
     let grand_total = parseFloat($('#grandTotal').text()) || 0;
+    let payment_method = $('#paymentMethodSelect').val() || 'Cash';
+
+    if (payment_method === 'Lipana') {
+        if (!lipanaRequest || lipanaRequest.invoiceNo !== invoiceNo || lipanaRequest.amount !== grand_total) {
+            notify('Send the Lipana payment prompt for this exact sale before completing it.', 'warning');
+            return;
+        }
+    }
 
     let saleData = {
         invoice_no: invoiceNo,
         customer_id: customer_id,
         discount: discount,
         grand_total: grand_total,
+        payment_method: payment_method,
         items: cart.map(item => ({ product_id: item.id, qty: item.qty, unit_price: item.price }))
     };
 
@@ -624,6 +623,7 @@ $('#completeSaleBtn').on('click', function() {
                 notify('Sale completed! Invoice: ' + res.invoice_no, 'success');
                 lastReceiptData = getReceiptData();
                 cart = [];
+                lipanaRequest = null;
                 invoiceNo = generateInvoiceNo();
                 $('#invoiceDisplay').text(invoiceNo);
                 $('#receiptInvoice').text(invoiceNo);
